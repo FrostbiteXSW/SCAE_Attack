@@ -24,35 +24,34 @@ from tensorflow import nest
 
 
 def expand_dims(tensor, axis, n_dims=1):
-
-  for _ in range(n_dims):
-    tensor = tf.expand_dims(tensor, axis)
-  return tensor
+	for _ in range(n_dims):
+		tensor = tf.expand_dims(tensor, axis)
+	return tensor
 
 
 def make_brodcastable(tensor, against_tensor):
-  n_dim_diff = against_tensor.shape.ndims - tensor.shape.ndims
-  assert n_dim_diff >= 0
-  return expand_dims(tensor, axis=-1, n_dims=n_dim_diff)
+	n_dim_diff = against_tensor.shape.ndims - tensor.shape.ndims
+	assert n_dim_diff >= 0
+	return expand_dims(tensor, axis=-1, n_dims=n_dim_diff)
 
 
 def py_func_metric(func, inputs, output_dtype=tf.float32):
-  res = tf.py_func(func, inputs, [output_dtype], stateful=False)
-  res = tf.reshape(res, [])
-  return res
+	res = tf.py_func(func, inputs, [output_dtype], stateful=False)
+	res = tf.reshape(res, [])
+	return res
 
 
 def ensure_length(x, length):
-  """Enusres that the input is an array of a given length.
+	"""Enusres that the input is an array of a given length.
 
-  Args:
-    x: tensor or a list of tensors.
-    length: int.
-  Returns:
-    list of tensors of a given length.
-  """
-  x = nest.flatten(x)
-  if len(x) == 1:
-    x *= length
+	Args:
+		x: tensor or a list of tensors.
+		length: int.
+	Returns:
+		list of tensors of a given length.
+	"""
+	x = nest.flatten(x)
+	if len(x) == 1:
+		x *= length
 
-  return x
+	return x

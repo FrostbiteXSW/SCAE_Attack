@@ -138,7 +138,7 @@ def randint(min: int, max: int, list_except: list = None):
 	# Remove duplicated values
 	i = 0
 	while i < len(list_except) - 2:
-		if list_except[i] == list_except[i+1]:
+		if list_except[i] == list_except[i + 1]:
 			list_except.remove(list_except[i])
 		else:
 			i += 1
@@ -156,7 +156,7 @@ def randint(min: int, max: int, list_except: list = None):
 	if right == -1:
 		return random.randint(min, max)
 
-	list_except = list_except[left:right+1]
+	list_except = list_except[left:right + 1]
 	if len(list_except) == max - min + 1:
 		raise ValueError('All values between min and max are excluded.')
 

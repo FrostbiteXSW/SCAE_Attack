@@ -11,7 +11,7 @@ import tensorflow as tf
 from tqdm import trange
 
 from model import stacked_capsule_autoencoders
-from utilities import get_dataset, block_warnings, ModelCollector, to_float32, imshow
+from utilities import get_dataset, block_warnings, ModelCollector, to_float32
 
 
 class SCAE(ModelCollector):
