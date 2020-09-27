@@ -371,7 +371,7 @@ if __name__ == '__main__':
 		np.savez_compressed(path + 'images/{}_{}.npz'
 		                    .format(index, 'S' if succeed else 'F'), pert_image=global_best_pert_image)
 
-	result = 'Optimizer configuration: {}. Success rate: {:.4f}. Average pert amount: {:.4f}'.format(
+	result = 'Optimizer configuration: {}. Success rate: {:.4f}. Average pert amount: {:.4f}.'.format(
 		config_name, succeed_count / num_samples, succeed_pert_amount / succeed_count)
 	print(result)
 	if os.path.exists(path + 'result.txt'):
