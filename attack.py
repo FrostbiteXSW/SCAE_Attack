@@ -10,7 +10,7 @@ from model import stacked_capsule_autoencoders
 from utilities import *
 
 
-class SCAE(ModelCollector):
+class SCAE_L2_Attack(ModelCollector):
 	def __init__(
 			self,
 			input_size,
@@ -37,7 +37,8 @@ class SCAE(ModelCollector):
 			learning_rate=1e-4,
 			optimizer='Adam',
 			scope='SCAE',
-			snapshot=None
+			snapshot=None,
+			capsule_loss_type='PriPos'  # choose from 'Pri', 'Pos' or 'PriPos'. Default is 'PriPos'.
 	):
 		if input_size is None:
 			input_size = [1, 224, 224, 3]
@@ -73,29 +74,36 @@ class SCAE(ModelCollector):
 			# Placeholders for variables to initialize
 			self.input = tf.placeholder(tf.float32, input_size)
 			self.mask = tf.placeholder(tf.float32, input_size)
-			self.target_prior_position = tf.placeholder(tf.int32)
-			self.target_posterior_position = tf.placeholder(tf.int32)
 			self.const = tf.placeholder(tf.float32, [])
 
-			# For normal prediction
-			self.res = self.model({'image': self.input})
-
+			# Variables to be assigned during initialization
 			pert_atanh = tf.Variable(tf.zeros(input_size))
 			input = tf.Variable(tf.zeros(input_size), trainable=False)
 			input_atanh = tf.atanh((input - 0.5) / 0.5 * 0.999999)
 			mask = tf.Variable(tf.zeros(input_size), trainable=False)
-			target_prior_position = tf.Variable(tf.placeholder(tf.int32), trainable=False, validate_shape=False)
-			target_posterior_position = tf.Variable(tf.placeholder(tf.int32), trainable=False, validate_shape=False)
 			const = tf.Variable(tf.zeros([]), trainable=False)
+			subset_prior_position = tf.Variable(tf.placeholder(tf.int64), trainable=False, validate_shape=False)
+			subset_posterior_position = tf.Variable(tf.placeholder(tf.int64), trainable=False, validate_shape=False)
 
 			self.pert_image = 0.5 * (tf.tanh(pert_atanh * mask + input_atanh) + 1)
 			self.pert_res = self.model({'image': self.pert_image})
 
-			c_loss_prior = tf.reduce_sum(0.5 * tf.square(
-				tf.gather(self.pert_res.caps_presence_prob, target_prior_position, axis=1)))
-			c_loss_posterior = tf.reduce_sum(0.5 * tf.square(
-				tf.gather(tf.reduce_sum(self.pert_res.posterior_mixing_probs, axis=1), target_posterior_position, axis=1)))
-			self.c_loss = const * (c_loss_prior + c_loss_posterior / (n_part_caps ** 2))
+			object_capsule_set_prior = self.pert_res.caps_presence_prob
+			object_capsule_set_posterior = tf.reduce_sum(self.pert_res.posterior_mixing_probs, axis=1)
+
+			object_capsule_subset_prior = tf.gather(object_capsule_set_prior, subset_prior_position, axis=1)
+			object_capsule_subset_posterior = tf.gather(object_capsule_set_posterior, subset_posterior_position, axis=1)
+
+			c_loss_prior = tf.reduce_sum(0.5 * tf.square(object_capsule_subset_prior))
+			c_loss_posterior = tf.reduce_sum(0.5 * tf.square(object_capsule_subset_posterior)) / (n_part_caps ** 2)
+
+			if capsule_loss_type == 'Pri':
+				self.c_loss = const * c_loss_prior
+			elif capsule_loss_type == 'Pos':
+				self.c_loss = const * c_loss_posterior
+			else:
+				self.c_loss = const * (c_loss_prior + c_loss_posterior)
+
 			self.p_loss = tf.reduce_sum(0.5 * tf.square(self.pert_image - input))
 			loss = self.c_loss + self.p_loss
 
@@ -113,15 +121,24 @@ class SCAE(ModelCollector):
 			rst_opt = tf.initialize_variables(var_list=optimizer.variables())
 			self.sess.run(rst_opt)
 
+			# For normal prediction
+			self.res = self.model({'image': self.input})
+
+			# Calculate object capsule subset
+			prior_pres_clean = self.res.caps_presence_prob
+			posterior_pres_clean = tf.reduce_sum(self.res.posterior_mixing_probs, 1)
+
 			# Init variables for optimization
 			self.init = [
 				tf.assign(pert_atanh, tf.random.uniform(input_size)),
 				tf.assign(input, self.input),
 				tf.assign(mask, self.mask),
-				tf.assign(target_prior_position, self.target_prior_position, validate_shape=False),
-				tf.assign(target_posterior_position, self.target_posterior_position, validate_shape=False),
 				tf.assign(const, self.const),
-				rst_opt
+				rst_opt,
+				tf.assign(subset_prior_position, tf.where(prior_pres_clean > tf.reduce_mean(prior_pres_clean))[:, 1],
+				          validate_shape=False),
+				tf.assign(subset_posterior_position, tf.where(posterior_pres_clean > tf.reduce_mean(posterior_pres_clean))[:, 1],
+				          validate_shape=False)
 			]
 
 			# Restore params of model from snapshot
@@ -153,7 +170,7 @@ def compare(results: list, label: int, is_targeted: bool) -> bool:
 		return False
 
 
-configs = {
+optimizer_configs = {
 	'RMSPROP_fast': [300, 1e-1, 'RMSPROP'],
 	'RMSPROP_normal': [1000, 1e-1, 'RMSPROP'],
 	'RMSPROP_complex': [2000, 1e-1, 'RMSPROP'],
@@ -165,23 +182,20 @@ configs = {
 if __name__ == '__main__':
 	block_warnings()
 
+	# Attack configuration
 	dataset = 'mnist'
-	config_name = 'RMSPROP_fast'
-	max_train_steps, learning_rate, optimizer = configs[config_name]
-	attack_unsupervised, attack_supervised = True, False
-	num_samples = 5000
+	optimizer_config_name = 'ADAM_normal'
+	num_samples = 500
+	classifiers = 'PriPosK'
 
-	assert attack_supervised or attack_unsupervised
+	# classifiers should be set as [Pri|Pos][K|L]
+	# For example: PriK means prior K-Means classifier. PosL means posterior linear classifier.
+	#              PriPosKL means prior & posterior K-Means classifiers and prior & posterior linear classifiers.
 
-	cfg_str = ''
-	if attack_unsupervised:
-		cfg_str += 'k'
-	if attack_supervised:
-		cfg_str += 'l'
-
+	# Create result directory
 	now = time.localtime()
 	path = './results/{}_{}_{}_{}_{}_{}/'.format(
-		cfg_str,
+		classifiers,
 		now.tm_year,
 		now.tm_mon,
 		now.tm_mday,
@@ -191,6 +205,7 @@ if __name__ == '__main__':
 	if not os.path.exists(path + 'images/'):
 		os.makedirs(path + 'images/')
 
+	# Model parameters. Edit them ONLY IF YOU KNOW WHAT YOU ARE DOING!
 	canvas_size = 28
 	n_part_caps = 40
 	n_obj_caps = 32
@@ -204,8 +219,10 @@ if __name__ == '__main__':
 	template_nonlin = 'sigmoid'
 	color_nonlin = 'sigmoid'
 	snapshot = './checkpoints/{}/model.ckpt'.format(dataset)
+	max_train_steps, learning_rate, optimizer = optimizer_configs[optimizer_config_name]
 
-	model = SCAE(
+	# Create the attack model according to parameters above
+	model = SCAE_L2_Attack(
 		input_size=[1, canvas_size, canvas_size, n_channels],
 		num_classes=10,
 		n_part_caps=n_part_caps,
@@ -222,45 +239,67 @@ if __name__ == '__main__':
 		learning_rate=learning_rate,
 		optimizer=optimizer,
 		scope='SCAE',
-		snapshot=snapshot
+		snapshot=snapshot,
+		capsule_loss_type=('Pri' if 'Pri' in classifiers else '') + ('Pos' if 'Pos' in classifiers else '')
 	)
 
-	if attack_unsupervised:
+	# Load prior K-Means classifier
+	if 'Pri' in classifiers and 'K' in classifiers:
 		kmeans_pri = joblib.load('./checkpoints/{}/kmeans_prior.m'.format(dataset))
 		npz = np.load('./checkpoints/{}/kmeans_labels_prior.npz'.format('mnist'))
 		p2l_pri = npz['preds_2_labels']
 		npz.close()
 
+	# Load posterior K-Means classifier
+	if 'Pos' in classifiers and 'K' in classifiers:
 		kmeans_pos = joblib.load('./checkpoints/{}/kmeans_posterior.m'.format(dataset))
 		npz = np.load('./checkpoints/{}/kmeans_labels_posterior.npz'.format('mnist'))
 		p2l_pos = npz['preds_2_labels']
 		npz.close()
 
+	# Load dataset
 	testset = get_dataset(dataset, 'test', shape=[canvas_size, canvas_size], file_path='./datasets')
 
+	# Variables to save the attack result
 	succeed_count = 0
 	succeed_pert_amount = 0.
 
+	# Shuffle the order of samples
 	shuffle_indices = list(range(len(testset['image'])))
 	random.seed(time.time())
 	random.shuffle(shuffle_indices)
 
+	# Score dict for optimization
+	score_to_collect = AttrDict()
+	if 'Pri' in classifiers and 'K' in classifiers:
+		score_to_collect['PriK'] = model.pert_res.caps_presence_prob
+	if 'Pos' in classifiers and 'K' in classifiers:
+		score_to_collect['PosK'] = model.pert_res.posterior_mixing_probs
+	if 'Pri' in classifiers and 'L' in classifiers:
+		score_to_collect['PriL'] = model.pert_res.prior_cls_pred[0]
+	if 'Pos' in classifiers and 'L' in classifiers:
+		score_to_collect['PosL'] = model.pert_res.posterior_cls_pred[0]
+
+	# Score dict for validation
+	score_to_collect_validation = AttrDict()
+	if 'Pri' in classifiers and 'K' in classifiers:
+		score_to_collect_validation['PriK'] = model.res.caps_presence_prob
+	if 'Pos' in classifiers and 'K' in classifiers:
+		score_to_collect_validation['PosK'] = model.res.posterior_mixing_probs
+	if 'Pri' in classifiers and 'L' in classifiers:
+		score_to_collect_validation['PriL'] = model.res.prior_cls_pred[0]
+	if 'Pos' in classifiers and 'L' in classifiers:
+		score_to_collect_validation['PosL'] = model.res.posterior_cls_pred[0]
+
+	# Start the attack on selected samples
 	for index in shuffle_indices[:num_samples]:
 		source_image = to_float32(testset['image'][index])
 		source_label = testset['label'][index]
 
-		prior_pres, posterior_pres = model.run(source_image[None],
-		                                       [model.res.caps_presence_prob,
-		                                        model.res.posterior_mixing_probs])
-
-		prior_pres_position = np.where(prior_pres > prior_pres.mean())[1]
-		posterior_pres = posterior_pres.sum(1)
-		posterior_pres_position = np.where(posterior_pres > posterior_pres.mean())[1]
-
 		# Calculate mask
 		mask = imblur(source_image, times=1)
 
-		# Set const value
+		# Set constant
 		lower_bound = 0
 		upper_bound = np.inf
 		const = 1e2
@@ -271,19 +310,21 @@ if __name__ == '__main__':
 
 		# Outer iteration
 		dynamic_desc_steps = trange(9, desc='Image {}'.format(index))
-		for _ in dynamic_desc_steps:
+		for outer_iter in dynamic_desc_steps:
+			# Init the original image, mask and constant
 			model.sess.run(model.init, feed_dict={model.input: source_image[None],
 			                                      model.mask: mask[None],
-			                                      model.target_prior_position: prior_pres_position,
-			                                      model.target_posterior_position: posterior_pres_position,
 			                                      model.const: const})
 
-			best_p_loss = np.inf
+			# Flag for constant update
+			flag_hit_succeed = False
 
 			# Inner iteration
-			for epoch in range(max_train_steps):
+			for inner_iter in range(max_train_steps):
+				# Run optimizer
 				model.sess.run(model.train_step)
 
+				# Get the current loss
 				c_loss, p_loss = model.sess.run([model.c_loss, model.p_loss])
 
 				if np.isnan(p_loss):
@@ -291,33 +332,31 @@ if __name__ == '__main__':
 					best_p_loss = np.nan
 					break
 
-				score_list = []
+				# Collect scores
+				score_list = model.sess.run(score_to_collect)
+				if 'PriK' in score_to_collect.keys():
+					score_list['PriK'] = p2l_pri[kmeans_pri.predict(score_list['PriK'])[0]]
+				if 'PosK' in score_to_collect.keys():
+					score_list['PosK'] = p2l_pos[kmeans_pos.predict(score_list['PosK'].sum(1))[0]]
 
-				if attack_unsupervised:
-					prior_pres, posterior_pres = model.sess.run([model.pert_res.caps_presence_prob,
-					                                             model.pert_res.posterior_mixing_probs])
-					score_list.append(p2l_pri[kmeans_pri.predict(prior_pres)[0]])
-					score_list.append(p2l_pos[kmeans_pos.predict(posterior_pres.sum(1))[0]])
+				# Determine if succeed
+				succeed = compare(list(score_list.values()), source_label, is_targeted=False)
 
-				if attack_supervised:
-					score_prior, score_posterior = model.sess.run([model.pert_res.prior_cls_pred,
-					                                               model.pert_res.posterior_cls_pred])
-					score_list.append(score_prior[0])
-					score_list.append(score_posterior[0])
+				# Update flag
+				if not flag_hit_succeed and succeed:
+					flag_hit_succeed = True
 
-				succeed = compare(score_list, source_label, is_targeted=False)
-
-				if succeed and p_loss < best_p_loss:
-					best_p_loss = p_loss
-
+				# Update global best result
 				if succeed and p_loss < global_best_p_loss:
 					global_best_p_loss = p_loss
 					global_best_pert_image = model.sess.run(model.pert_image)[0]
 
+				# Update tqdm description
 				dynamic_desc_steps.set_postfix_str('c_l: {:.2f}, p_l: {:.2f}, best: {:.2f}'
 				                                   .format(c_loss, p_loss, global_best_p_loss))
 
-			if not np.isinf(best_p_loss):
+			# Update constant
+			if flag_hit_succeed:
 				upper_bound = const
 				const = (lower_bound + upper_bound) / 2
 			else:
@@ -327,52 +366,45 @@ if __name__ == '__main__':
 				else:
 					const = (lower_bound + upper_bound) / 2
 
+		# Start validation
 		if global_best_pert_image is None:
-			succeed = False
+			# Print result
 			print('Failed for {}. Source label: {}.'.format(index, source_label))
+
 		else:
-			# Validation
+			# Validation for success
 			assert True not in np.isnan(global_best_pert_image)
 
 			# L2 distance between pert_image and source_image
 			pert_amount = np.square(global_best_pert_image - source_image).sum() ** (1 / 2)
 
-			score_list = []
+			# Collect scores
+			score_list_validation = model.run(global_best_pert_image[None], score_to_collect_validation)
+			if 'PriK' in score_to_collect_validation.keys():
+				score_list_validation['PriK'] = p2l_pri[kmeans_pri.predict(score_list_validation['PriK'])[0]]
+			if 'PosK' in score_to_collect_validation.keys():
+				score_list_validation['PosK'] = p2l_pos[kmeans_pos.predict(score_list_validation['PosK'].sum(1))[0]]
 
-			if attack_unsupervised:
-				prior_pres, posterior_pres = model.run(global_best_pert_image[None],
-				                                       [model.res.caps_presence_prob,
-				                                        model.res.posterior_mixing_probs])
-				score_list.append(p2l_pri[kmeans_pri.predict(prior_pres)[0]])
-				score_list.append(p2l_pos[kmeans_pos.predict(posterior_pres.sum(1))[0]])
+			# Determine if succeed
+			assert compare(list(score_list_validation.values()), source_label, is_targeted=False)
 
-			if attack_supervised:
-				score_prior, score_posterior = model.run(global_best_pert_image[None],
-				                                         [model.res.prior_cls_pred,
-				                                          model.res.posterior_cls_pred])
-				score_list.append(score_prior[0])
-				score_list.append(score_posterior[0])
-
-			succeed = compare(score_list, source_label, is_targeted=False)
-			assert succeed
-
+			# Add info of the succeed sample to result variables
 			succeed_count += 1
 			succeed_pert_amount += pert_amount
 
+			# Print result
 			print('Succeed for {}. Source label: {}. Pert amount: {:.2f}'
 			      .format(index, source_label, pert_amount))
-			if attack_unsupervised:
-				print('Unsupervised result: prior={}, posterior={}'.format(score_list[0], score_list[1]))
-			if attack_supervised:
-				print('Supervised result: prior={}, posterior={}'.format(score_list[-2], score_list[-1]))
+			print(score_list_validation)
 
 		print()
 
-		np.savez_compressed(path + 'images/{}_{}.npz'
-		                    .format(index, 'S' if succeed else 'F'), pert_image=global_best_pert_image)
+		# Save the pert image
+		np.savez_compressed(path + 'images/{}.npz'.format(index), pert_image=global_best_pert_image)
 
+	# Save the final result of complete attack
 	result = 'Optimizer configuration: {}. Success rate: {:.4f}. Average pert amount: {:.4f}.'.format(
-		config_name, succeed_count / num_samples, succeed_pert_amount / succeed_count)
+		optimizer_config_name, succeed_count / num_samples, succeed_pert_amount / succeed_count)
 	print(result)
 	if os.path.exists(path + 'result.txt'):
 		os.remove(path + 'result.txt')
