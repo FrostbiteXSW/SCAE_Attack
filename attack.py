@@ -135,9 +135,11 @@ class SCAE_L2_Attack(ModelCollector):
 				tf.assign(mask, self.mask),
 				tf.assign(const, self.const),
 				rst_opt,
-				tf.assign(subset_prior_position, tf.where(prior_pres_clean > tf.reduce_mean(prior_pres_clean))[:, 1],
+				tf.assign(subset_prior_position,
+				          tf.where(prior_pres_clean > tf.reduce_mean(prior_pres_clean))[:, 1],
 				          validate_shape=False),
-				tf.assign(subset_posterior_position, tf.where(posterior_pres_clean > tf.reduce_mean(posterior_pres_clean))[:, 1],
+				tf.assign(subset_posterior_position,
+				          tf.where(posterior_pres_clean > tf.reduce_mean(posterior_pres_clean))[:, 1],
 				          validate_shape=False)
 			]
 

@@ -11,7 +11,6 @@ import numpy as np
 import tensorflow as tf
 import tensorflow_datasets as tfds
 from PIL import Image
-from absl import logging
 from monty.collections import AttrDict
 from tqdm import trange
 
@@ -111,11 +110,6 @@ def to_float32(arr: np.ndarray):
 	arr = arr.astype(np.float32)
 	arr = arr / 255
 	return arr
-
-
-def sigmoid(x):
-	y = 1.0 / (1.0 + np.exp(-x))
-	return y
 
 
 def randint(min: int, max: int, list_except: list = None):
@@ -247,7 +241,6 @@ def block_warnings():
 	simplefilter(action='ignore', category=FutureWarning)
 	tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
 	tf.logging.set_verbosity(tf.logging.ERROR)
-	logging.set_verbosity(logging.ERROR)
 
 
 class ModelCollector(metaclass=abc.ABCMeta):
@@ -258,159 +251,3 @@ class ModelCollector(metaclass=abc.ABCMeta):
 	@abc.abstractmethod
 	def __call__(self, images):
 		pass
-
-
-def deepfool(
-		model: ModelCollector,
-		image: np.ndarray,
-		num_classes=10,
-		overshoot=0.02,
-		max_iter=50):
-	"""
-		https://github.com/MyRespect/AdversarialAttack/blob/master/deepfool_tf2/deepfool_tf.py
-	"""
-
-	image = image[None]
-
-	logits = model(image)[0]
-
-	I = logits.argsort()[::-1]
-	I = I[0:num_classes]
-	k_i = I[0]
-
-	input_shape = image.shape
-	pert_image = copy.deepcopy(image)
-	w = np.zeros(input_shape)
-	r_tot = np.zeros(input_shape)
-
-	loop_i = 0
-	for loop_i in range(max_iter):
-		pert = np.inf
-
-		logits, grads = model(pert_image, with_grad=True)
-		logits = logits[0]
-		grad_orig = grads[I[0]][0]
-
-		k_i = np.argmax(logits)
-		if k_i != I[0]:
-			break
-
-		for k in range(1, num_classes):
-			cur_grad = grads[I[k]][0]
-
-			w_k = cur_grad - grad_orig
-			f_k = logits[I[k]] - logits[I[0]]
-			pert_k = abs(f_k) / (np.linalg.norm(np.reshape(w_k, [-1])) + 1e-10)
-
-			if pert_k < pert:
-				pert = pert_k
-				w = w_k
-
-		r_i = (pert + 1e-4) * w / (np.linalg.norm(w) + 1e-10)
-		r_tot = np.float32(r_tot + r_i)
-
-		pert_image = (image + (1 + overshoot) * r_tot).clip(0, 1)
-
-	r_tot = (pert_image - image)[0]
-	pert_image = pert_image[0]
-
-	return AttrDict(
-		pert=r_tot,
-		pert_epochs=loop_i + 1,
-		true_cls=I[0],
-		pert_cls=k_i,
-		pert_image=pert_image
-	)
-
-
-def universal_perturbation(
-		model: ModelCollector,
-		images: np.ndarray,
-		batch_size: int,
-		target_fooling_rate=0.8,
-		max_iter_uni=50,
-		xi=10,
-		p=np.inf,
-		num_classes=10,
-		overshoot=0.02,
-		max_iter=10):
-	"""
-		https://github.com/LTS4/universal/blob/master/python/universal_pert.py
-
-    :param model: Target model
-    :param images: Target images
-    :param batch_size: batch size for evaluation
-    :param target_fooling_rate: controls the desired fooling rate (default = 80% fooling rate)
-    :param max_iter_uni: optional other termination criterion (maximum number of iteration, default = np.inf)
-    :param xi: controls the l_p magnitude of the perturbation (default = 10)
-    :param p: norm to be used (FOR NOW, ONLY p = 2, and p = np.inf ARE ACCEPTED!) (default = np.inf)
-    :param num_classes: num_classes (limits the number of classes to test against, by default = 10)
-    :param overshoot: used as a termination criterion to prevent vanishing updates (default = 0.02)
-    :param max_iter: maximum number of iterations for deepfool (default = 10)
-    :return: the universal perturbation.
-  """
-
-	def proj_lp(v, xi, p):
-		# Project on the lp ball centered at 0 and of radius xi
-
-		# SUPPORTS only p = 2 and p = Inf for now
-		if p == 2:
-			v = v * min(1, xi / np.linalg.norm(v.flatten()))
-		elif p == np.inf:
-			v = np.sign(v) * np.minimum(abs(v), xi)
-		else:
-			raise ValueError('Values of p different from 2 and Inf are currently not supported...')
-
-		return v
-
-	v = 0
-
-	for itr in range(max_iter_uni):
-		# Go through the data set and compute the perturbation increments sequentially
-		for i in range(len(images)):
-			image = images[i]
-			v_image = (image + v).clip(0, 1)
-
-			pred = np.argmax(model(image[None]), axis=-1)[0]
-			pred_v = np.argmax(model(v_image[None]), axis=-1)[0]
-
-			if pred == pred_v:
-				print('\r>> k = {}, pass # {}'.format(i, itr), end='')
-
-				# Compute adversarial perturbation
-				r_tot, loop_i, _, _, _ = deepfool(
-					model,
-					v_image,
-					num_classes=num_classes,
-					overshoot=overshoot,
-					max_iter=max_iter
-				).values()
-
-				# Make sure it converged...
-				if loop_i <= max_iter and True not in np.isnan(r_tot):
-					v += r_tot
-
-					# Project on l_p ball
-					v = proj_lp(v, xi, p)
-
-		est_labels_orig = np.zeros(len(images))
-		est_labels_pert = np.zeros(len(images))
-
-		num_batches = np.int(np.ceil(np.float(len(images)) / np.float(batch_size)))
-
-		# Compute the estimated labels in batches
-		for i_batch in range(num_batches):
-			i_start = (i_batch * batch_size)
-			i_end = min((i_batch + 1) * batch_size, len(images))
-			images = images[i_start:i_end]
-
-			est_labels_orig[i_start:i_end] = np.argmax(model(images), axis=-1).flatten()
-			est_labels_pert[i_start:i_end] = np.argmax(model((images + v).clip(0, 1)), axis=-1).flatten()
-
-		# Compute the fooling rate
-		fooling_rate = float(np.sum(est_labels_pert != est_labels_orig) / float(len(images)))
-		print('\rFooling rate = {}'.format(fooling_rate))
-		if fooling_rate >= target_fooling_rate:
-			break
-
-	return v
