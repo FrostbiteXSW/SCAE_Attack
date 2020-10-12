@@ -407,10 +407,10 @@ if __name__ == '__main__':
 			      .format(index, source_label, pert_amount))
 			print(score_list_validation)
 
-		print()
+			# Save the pert image
+			np.savez_compressed(path + 'images/{}.npz'.format(index), pert_image=global_best_pert_image)
 
-		# Save the pert image
-		np.savez_compressed(path + 'images/{}.npz'.format(index), pert_image=global_best_pert_image)
+		print()
 
 	# Save the final result of complete attack
 	result = 'Optimizer configuration: {}. Success rate: {:.4f}. Average pert amount: {:.4f}.'.format(
