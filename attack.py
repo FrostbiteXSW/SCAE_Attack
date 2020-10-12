@@ -188,7 +188,7 @@ if __name__ == '__main__':
 	dataset = 'mnist'
 	optimizer_config_name = 'ADAM_normal'
 	num_samples = 500
-	classifiers = 'PriPosK'
+	classifiers = 'PriPosKL'
 
 	# classifiers should be set as [Pri|Pos][K|L]
 	# For example: PriK means prior K-Means classifier. PosL means posterior linear classifier.
@@ -278,9 +278,9 @@ if __name__ == '__main__':
 	if 'Pos' in classifiers and 'K' in classifiers:
 		score_to_collect['PosK'] = model.pert_res.posterior_mixing_probs
 	if 'Pri' in classifiers and 'L' in classifiers:
-		score_to_collect['PriL'] = model.pert_res.prior_cls_pred[0]
+		score_to_collect['PriL'] = model.pert_res.prior_cls_pred
 	if 'Pos' in classifiers and 'L' in classifiers:
-		score_to_collect['PosL'] = model.pert_res.posterior_cls_pred[0]
+		score_to_collect['PosL'] = model.pert_res.posterior_cls_pred
 
 	# Score dict for validation
 	score_to_collect_validation = AttrDict()
@@ -289,9 +289,9 @@ if __name__ == '__main__':
 	if 'Pos' in classifiers and 'K' in classifiers:
 		score_to_collect_validation['PosK'] = model.res.posterior_mixing_probs
 	if 'Pri' in classifiers and 'L' in classifiers:
-		score_to_collect_validation['PriL'] = model.res.prior_cls_pred[0]
+		score_to_collect_validation['PriL'] = model.res.prior_cls_pred
 	if 'Pos' in classifiers and 'L' in classifiers:
-		score_to_collect_validation['PosL'] = model.res.posterior_cls_pred[0]
+		score_to_collect_validation['PosL'] = model.res.posterior_cls_pred
 
 	# Start the attack on selected samples
 	for index in shuffle_indices[:num_samples]:
@@ -340,6 +340,10 @@ if __name__ == '__main__':
 					score_list['PriK'] = p2l_pri[kmeans_pri.predict(score_list['PriK'])[0]]
 				if 'PosK' in score_to_collect.keys():
 					score_list['PosK'] = p2l_pos[kmeans_pos.predict(score_list['PosK'].sum(1))[0]]
+				if 'PriL' in score_to_collect.keys():
+					score_list['PriL'] = score_list['PriL'][0]
+				if 'PosL' in score_to_collect.keys():
+					score_list['PosL'] = score_list['PosL'][0]
 
 				# Determine if succeed
 				succeed = compare(list(score_list.values()), source_label, is_targeted=False)
@@ -386,6 +390,10 @@ if __name__ == '__main__':
 				score_list_validation['PriK'] = p2l_pri[kmeans_pri.predict(score_list_validation['PriK'])[0]]
 			if 'PosK' in score_to_collect_validation.keys():
 				score_list_validation['PosK'] = p2l_pos[kmeans_pos.predict(score_list_validation['PosK'].sum(1))[0]]
+			if 'PriL' in score_to_collect_validation.keys():
+				score_list_validation['PriL'] = score_list_validation['PriL'][0]
+			if 'PosL' in score_to_collect_validation.keys():
+				score_list_validation['PosL'] = score_list_validation['PosL'][0]
 
 			# Determine if succeed
 			assert compare(list(score_list_validation.values()), source_label, is_targeted=False)
