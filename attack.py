@@ -188,6 +188,7 @@ if __name__ == '__main__':
 	dataset = 'mnist'
 	optimizer_config_name = 'ADAM_normal'
 	num_samples = 500
+	outer_iteration = 9
 	classifiers = 'PriPosKL'
 
 	# classifiers should be set as [Pri|Pos][K|L]
@@ -221,7 +222,7 @@ if __name__ == '__main__':
 	template_nonlin = 'sigmoid'
 	color_nonlin = 'sigmoid'
 	snapshot = './checkpoints/{}/model.ckpt'.format(dataset)
-	max_train_steps, learning_rate, optimizer = optimizer_configs[optimizer_config_name]
+	inner_iteration, learning_rate, optimizer = optimizer_configs[optimizer_config_name]
 
 	# Create the attack model according to parameters above
 	model = SCAE_L2_Attack(
@@ -311,7 +312,7 @@ if __name__ == '__main__':
 		global_best_pert_image = None
 
 		# Outer iteration
-		dynamic_desc_steps = trange(9, desc='Image {}'.format(index))
+		dynamic_desc_steps = trange(outer_iteration, desc='Image {}'.format(index))
 		for outer_iter in dynamic_desc_steps:
 			# Init the original image, mask and constant
 			model.sess.run(model.init, feed_dict={model.input: source_image[None],
@@ -322,7 +323,7 @@ if __name__ == '__main__':
 			flag_hit_succeed = False
 
 			# Inner iteration
-			for inner_iter in range(max_train_steps):
+			for inner_iter in range(inner_iteration):
 				# Run optimizer
 				model.sess.run(model.train_step)
 
