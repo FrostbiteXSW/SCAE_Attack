@@ -332,7 +332,6 @@ if __name__ == '__main__':
 
 				if np.isnan(p_loss):
 					# When encountered nan, there is no need to continue.
-					best_p_loss = np.nan
 					break
 
 				# Collect scores
