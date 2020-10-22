@@ -2,7 +2,7 @@ matplotlib>=3.0.3
 monty>=3.0.2
 scikit-learn~=0.23.0
 dm_sonnet==1.35
-tensorflow==1.15.0
-tensorflow-gpu==1.15.0
-tensorflow_probability==0.8.0
-tensorflow_datasets==1.3.0
+tensorflow==1.15.4
+tensorflow-gpu==1.15.4
+tensorflow-probability==0.8.0
+tensorflow-datasets==1.3.0
