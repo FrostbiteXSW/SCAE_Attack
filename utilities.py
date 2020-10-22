@@ -103,8 +103,8 @@ def imblur(image: np.ndarray, times=1):
 			for y in range(shape[1]):
 				x_low, x_high = max(x - 1, 0), min(x + 2, shape[0])
 				y_low, y_high = max(y - 1, 0), min(y + 2, shape[1])
-				pixel_sum = image[x_low:x_high, y_low:y_high, :].sum()
-				pixel_cnt = (x_high - x_low) * (y_high - y_low) * shape[2]
+				pixel_sum = image[x_low:x_high, y_low:y_high, :].sum(axis=0).sum(axis=0)
+				pixel_cnt = (x_high - x_low) * (y_high - y_low)
 				new_image[x, y, :] = pixel_sum / pixel_cnt
 		image = new_image
 
