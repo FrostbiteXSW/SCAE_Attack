@@ -179,21 +179,25 @@ def get_dataset(name, split, shape=None, batch_size=100, file_path=None, save_on
 		label=[]
 	)
 
-	file_name = name + '_' + split + '.npz'
-	if file_path[-1] != '/' or file_path[-1] != '\\':
-		file_name = '/' + file_name
-	file_name = file_path + file_name
+	if file_path:
+		file_name = name + '_' + split + '.npz'
+		if file_path[-1] != '/' or file_path[-1] != '\\':
+			file_name = '/' + file_name
+		file_name = file_path + file_name
 
-	if file_path and not save_only:
-		if os.path.exists(file_name):
-			print('Info: Loading dataset file from \"{}\". If you want to reshape images, set \"save_only\" to True.'
-			      .format(file_name))
-			npzfile = np.load(file_name)
-			output['image'] = npzfile['image']
-			output['label'] = npzfile['label']
-			return output
-		else:
-			print('Warning: Dataset file \"{}\" not found. Will save a new one.'.format(file_name))
+		if not save_only:
+			if os.path.exists(file_name):
+				print('Info: Loading dataset file from \"{}\".'.format(file_name))
+
+				if shape is not None:
+					print('Warning: Image shape will remain unchanged. If you want to reshape images, set \"save_only\" to True.')
+
+				npzfile = np.load(file_name)
+				output['image'] = npzfile['image']
+				output['label'] = npzfile['label']
+				return output
+			else:
+				print('Warning: Dataset file \"{}\" not found. Will save a new one.'.format(file_name))
 
 	graph = tf.Graph()
 	sess = tf.Session(graph=graph)
