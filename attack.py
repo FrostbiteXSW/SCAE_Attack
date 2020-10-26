@@ -249,14 +249,14 @@ if __name__ == '__main__':
 	# Load prior K-Means classifier
 	if 'Pri' in classifiers and 'K' in classifiers:
 		kmeans_pri = joblib.load('./checkpoints/{}/kmeans_prior.m'.format(dataset))
-		npz = np.load('./checkpoints/{}/kmeans_labels_prior.npz'.format('mnist'))
+		npz = np.load('./checkpoints/{}/kmeans_labels_prior.npz'.format(dataset))
 		p2l_pri = npz['preds_2_labels']
 		npz.close()
 
 	# Load posterior K-Means classifier
 	if 'Pos' in classifiers and 'K' in classifiers:
 		kmeans_pos = joblib.load('./checkpoints/{}/kmeans_posterior.m'.format(dataset))
-		npz = np.load('./checkpoints/{}/kmeans_labels_posterior.npz'.format('mnist'))
+		npz = np.load('./checkpoints/{}/kmeans_labels_posterior.npz'.format(dataset))
 		p2l_pos = npz['preds_2_labels']
 		npz.close()
 
