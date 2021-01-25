@@ -2,15 +2,11 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import os
-
 import joblib
-import numpy as np
 from scipy.optimize import linear_sum_assignment
 from sklearn.cluster import KMeans
-from tqdm import trange
 
-from train import SCAE
+from train import *
 from utilities import get_dataset, block_warnings, to_float32
 
 
@@ -46,49 +42,49 @@ def bipartite_match(preds, labels, n_classes=None, presence=None):
 if __name__ == '__main__':
 	block_warnings()
 
-	dataset = 'cifar10'
+	config = config_svhn
 	batch_size = 100
-	canvas_size = 32
-	n_part_caps = 40
-	n_obj_caps = 32
-	n_channels = 3
-	colorize_templates = True
-	use_alpha_channel = True
-	prior_within_example_sparsity_weight = 2.
-	prior_between_example_sparsity_weight = 0.35
-	posterior_within_example_sparsity_weight = 0.7
-	posterior_between_example_sparsity_weight = 0.2
-	template_size = 11
-	template_nonlin = 'sigmoid'
-	color_nonlin = 'sigmoid'
-	snapshot = './checkpoints/{}/model.ckpt'.format(dataset)
-
-	path = snapshot[:snapshot.rindex('/')]
-	if not os.path.exists(path):
-		os.makedirs(path)
+	max_train_steps = 300
+	learning_rate = 3e-5
+	snapshot = './checkpoints/{}/model.ckpt'.format(config['dataset'])
 
 	model = SCAE(
-		input_size=[batch_size, canvas_size, canvas_size, n_channels],
-		num_classes=10,
-		n_part_caps=n_part_caps,
-		n_obj_caps=n_obj_caps,
-		n_channels=n_channels,
-		colorize_templates=colorize_templates,
-		use_alpha_channel=use_alpha_channel,
-		prior_within_example_sparsity_weight=prior_within_example_sparsity_weight,
-		prior_between_example_sparsity_weight=prior_between_example_sparsity_weight,
-		posterior_within_example_sparsity_weight=posterior_within_example_sparsity_weight,
-		posterior_between_example_sparsity_weight=posterior_between_example_sparsity_weight,
-		template_size=template_size,
-		template_nonlin=template_nonlin,
-		color_nonlin=color_nonlin,
+		input_size=[batch_size, config['canvas_size'], config['canvas_size'], config['n_channels']],
+		num_classes=config['num_classes'],
+		n_part_caps=config['n_part_caps'],
+		n_obj_caps=config['n_obj_caps'],
+		n_channels=config['n_channels'],
+		colorize_templates=config['colorize_templates'],
+		use_alpha_channel=config['use_alpha_channel'],
+		prior_within_example_sparsity_weight=config['prior_within_example_sparsity_weight'],
+		prior_between_example_sparsity_weight=config['prior_between_example_sparsity_weight'],
+		posterior_within_example_sparsity_weight=config['posterior_within_example_sparsity_weight'],
+		posterior_between_example_sparsity_weight=config['posterior_between_example_sparsity_weight'],
+		template_size=config['template_size'],
+		template_nonlin=config['template_nonlin'],
+		color_nonlin=config['color_nonlin'],
+		part_encoder_noise_scale=config['part_encoder_noise_scale'],
+		obj_decoder_noise_type=config['obj_decoder_noise_type'],
+		obj_decoder_noise_scale=config['obj_decoder_noise_scale'],
+		set_transformer_n_layers=config['set_transformer_n_layers'],
+		set_transformer_n_heads=config['set_transformer_n_heads'],
+		set_transformer_n_dims=config['set_transformer_n_dims'],
+		set_transformer_n_output_dims=config['set_transformer_n_output_dims'],
+		part_cnn_strides=config['part_cnn_strides'],
+		prep=config['prep'],
 		is_training=False,
 		scope='SCAE',
 		snapshot=snapshot
 	)
 
-	trainset = get_dataset(dataset, 'train', shape=[canvas_size, canvas_size], file_path='./datasets')
-	testset = get_dataset(dataset, 'test', shape=[canvas_size, canvas_size], file_path='./datasets')
+	trainset = get_dataset(config['dataset'], 'train', shape=[config['canvas_size'], config['canvas_size']],
+	                       file_path='./datasets', save_only=False)
+	testset = get_dataset(config['dataset'], 'test', shape=[config['canvas_size'], config['canvas_size']],
+	                      file_path='./datasets', save_only=False)
+
+	path = snapshot[:snapshot.rindex('/')]
+	if not os.path.exists(path):
+		raise FileExistsError('Cannot access checkpoint files')
 
 	len_trainset = len(trainset['image'])
 	len_testset = len(testset['image'])

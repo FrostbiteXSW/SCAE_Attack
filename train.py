@@ -135,6 +135,7 @@ class SCAE(ModelCollector):
 
 
 config_mnist = {
+	'dataset': 'mnist',
 	'canvas_size': 40,
 	'n_part_caps': 24,
 	'n_obj_caps': 24,
@@ -161,6 +162,7 @@ config_mnist = {
 }
 
 config_svhn = {
+	'dataset': 'svhn_cropped',
 	'canvas_size': 32,
 	'n_part_caps': 24,
 	'n_obj_caps': 32,
@@ -187,6 +189,7 @@ config_svhn = {
 }
 
 config_cifar10 = {
+	'dataset': 'cifar10',
 	'canvas_size': 32,
 	'n_part_caps': 32,
 	'n_obj_caps': 64,
@@ -216,12 +219,11 @@ config_cifar10 = {
 if __name__ == '__main__':
 	block_warnings()
 
-	dataset = 'svhn_cropped'
-	config = config_svhn
+	config = config_mnist
 	batch_size = 100
 	max_train_steps = 300
 	learning_rate = 3e-5
-	snapshot = './checkpoints/{}/model.ckpt'.format(dataset)
+	snapshot = './checkpoints/{}/model.ckpt'.format(config['dataset'])
 
 	model = SCAE(
 		input_size=[batch_size, config['canvas_size'], config['canvas_size'], config['n_channels']],
@@ -254,10 +256,10 @@ if __name__ == '__main__':
 		# snapshot=snapshot
 	)
 
-	trainset = get_dataset(dataset, 'train', shape=[config['canvas_size'], config['canvas_size']], file_path='./datasets',
-	                       save_only=True)
-	testset = get_dataset(dataset, 'test', shape=[config['canvas_size'], config['canvas_size']], file_path='./datasets',
-	                      save_only=True)
+	trainset = get_dataset(config['dataset'], 'train', shape=[config['canvas_size'], config['canvas_size']],
+	                       file_path='./datasets', save_only=True)
+	testset = get_dataset(config['dataset'], 'test', shape=[config['canvas_size'], config['canvas_size']],
+	                      file_path='./datasets', save_only=True)
 
 	path = snapshot[:snapshot.rindex('/')]
 	if not os.path.exists(path):
