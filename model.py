@@ -29,8 +29,17 @@ def stacked_capsule_autoencoders(
 		prior_between_example_sparsity_weight=1.,
 		posterior_within_example_sparsity_weight=10.,
 		posterior_between_example_sparsity_weight=10.,
+		set_transformer_n_layers=3,
+		set_transformer_n_heads=1,
+		set_transformer_n_dims=16,
+		set_transformer_n_output_dims=256,
+		part_cnn_strides=None,
+		prep='none',
 		scope='stacked_capsule_autoencoders'
 ):
+	if part_cnn_strides is None:
+		part_cnn_strides = [2, 2, 1, 1]
+
 	"""Builds the SCAE."""
 	with tf.variable_scope(scope, 'stacked_capsule_autoencoders'):
 		img_size = [canvas_size] * 2
@@ -39,7 +48,7 @@ def stacked_capsule_autoencoders(
 		cnn_encoder = snt.nets.ConvNet2D(
 			output_channels=[128] * 4,
 			kernel_shapes=[3],
-			strides=[2, 2, 1, 1],
+			strides=part_cnn_strides,
 			paddings=[snt.VALID],
 			activate_final=True
 		)
@@ -66,10 +75,10 @@ def stacked_capsule_autoencoders(
 		)
 
 		obj_encoder = SetTransformer(
-			n_layers=3,
-			n_heads=1,
-			n_dims=16,
-			n_output_dims=256,
+			n_layers=set_transformer_n_layers,
+			n_heads=set_transformer_n_heads,
+			n_dims=set_transformer_n_dims,
+			n_output_dims=set_transformer_n_output_dims,
 			n_outputs=n_obj_caps,
 			layer_norm=True,
 			dropout_rate=0.)
@@ -107,6 +116,7 @@ def stacked_capsule_autoencoders(
 			posterior_sparsity_loss_type='entropy',
 			posterior_within_example_sparsity_weight=posterior_within_example_sparsity_weight,
 			posterior_between_example_sparsity_weight=posterior_between_example_sparsity_weight,
+			prep=prep
 		)
 
 	return model

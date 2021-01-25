@@ -38,6 +38,12 @@ class SCAE(ModelCollector):
 			prior_between_example_sparsity_weight=1.,
 			posterior_within_example_sparsity_weight=10.,
 			posterior_between_example_sparsity_weight=10.,
+			set_transformer_n_layers=3,
+			set_transformer_n_heads=1,
+			set_transformer_n_dims=16,
+			set_transformer_n_output_dims=256,
+			part_cnn_strides=None,
+			prep='none',
 			is_training=True,
 			learning_rate=1e-4,
 			use_lr_schedule=True,
@@ -46,6 +52,8 @@ class SCAE(ModelCollector):
 	):
 		if input_size is None:
 			input_size = [20, 224, 224, 3]
+		if part_cnn_strides is None:
+			part_cnn_strides = [2, 2, 1, 1]
 
 		graph = tf.Graph()
 
@@ -74,6 +82,12 @@ class SCAE(ModelCollector):
 			                                          prior_between_example_sparsity_weight,
 			                                          posterior_within_example_sparsity_weight,
 			                                          posterior_between_example_sparsity_weight,
+			                                          set_transformer_n_layers,
+			                                          set_transformer_n_heads,
+			                                          set_transformer_n_dims,
+			                                          set_transformer_n_output_dims,
+			                                          part_cnn_strides,
+			                                          prep,
 			                                          scope)
 
 			if is_training:
@@ -120,51 +134,119 @@ class SCAE(ModelCollector):
 		return self.sess.run(self.res.prior_cls_logits, feed_dict={self.batch_input: images})
 
 
+config_mnist = {
+	'canvas_size': 40,
+	'n_part_caps': 24,
+	'n_obj_caps': 24,
+	'n_channels': 1,
+	'num_classes': 10,
+	'colorize_templates': True,
+	'use_alpha_channel': True,
+	'prior_within_example_sparsity_weight': 2.,
+	'prior_between_example_sparsity_weight': 0.35,
+	'posterior_within_example_sparsity_weight': 0.7,
+	'posterior_between_example_sparsity_weight': 0.2,
+	'template_size': 11,
+	'template_nonlin': 'sigmoid',
+	'color_nonlin': 'relu1',
+	'part_encoder_noise_scale': 4.0,
+	'obj_decoder_noise_type': 'uniform',
+	'obj_decoder_noise_scale': 4.0,
+	'set_transformer_n_layers': 3,
+	'set_transformer_n_heads': 1,
+	'set_transformer_n_dims': 16,
+	'set_transformer_n_output_dims': 256,
+	'part_cnn_strides': [2, 2, 1, 1],
+	'prep': 'none'
+}
+
+config_svhn = {
+	'canvas_size': 32,
+	'n_part_caps': 24,
+	'n_obj_caps': 32,
+	'n_channels': 3,
+	'num_classes': 10,
+	'colorize_templates': True,
+	'use_alpha_channel': True,
+	'prior_within_example_sparsity_weight': 2.,
+	'prior_between_example_sparsity_weight': 0.35,
+	'posterior_within_example_sparsity_weight': 0.7,
+	'posterior_between_example_sparsity_weight': 0.2,
+	'template_size': 14,
+	'template_nonlin': 'sigmoid',
+	'color_nonlin': 'relu1',
+	'part_encoder_noise_scale': 4.0,
+	'obj_decoder_noise_type': 'uniform',
+	'obj_decoder_noise_scale': 4.0,
+	'set_transformer_n_layers': 3,
+	'set_transformer_n_heads': 2,
+	'set_transformer_n_dims': 64,
+	'set_transformer_n_output_dims': 128,
+	'part_cnn_strides': [1, 1, 2, 2],
+	'prep': 'sobel'
+}
+
+config_cifar10 = {
+	'canvas_size': 32,
+	'n_part_caps': 32,
+	'n_obj_caps': 64,
+	'n_channels': 3,
+	'num_classes': 10,
+	'colorize_templates': True,
+	'use_alpha_channel': True,
+	'prior_within_example_sparsity_weight': 2.,
+	'prior_between_example_sparsity_weight': 0.35,
+	'posterior_within_example_sparsity_weight': 0.7,
+	'posterior_between_example_sparsity_weight': 0.2,
+	'template_size': 14,
+	'template_nonlin': 'sigmoid',
+	'color_nonlin': 'relu1',
+	'part_encoder_noise_scale': 4.0,
+	'obj_decoder_noise_type': 'uniform',
+	'obj_decoder_noise_scale': 4.0,
+	'set_transformer_n_layers': 3,
+	'set_transformer_n_heads': 2,
+	'set_transformer_n_dims': 64,
+	'set_transformer_n_output_dims': 128,
+	'part_cnn_strides': [1, 1, 2, 2],
+	'prep': 'sobel'
+}
+
+
 if __name__ == '__main__':
 	block_warnings()
 
-	dataset = 'mnist'
+	dataset = 'svhn_cropped'
+	config = config_svhn
 	batch_size = 100
-	canvas_size = 28
 	max_train_steps = 300
 	learning_rate = 3e-5
-	n_part_caps = 40
-	n_obj_caps = 32
-	n_channels = 1
-	colorize_templates = True
-	use_alpha_channel = True
-	prior_within_example_sparsity_weight = 2.
-	prior_between_example_sparsity_weight = 0.35
-	posterior_within_example_sparsity_weight = 0.7
-	posterior_between_example_sparsity_weight = 0.2
-	template_nonlin = 'sigmoid'
-	color_nonlin = 'sigmoid'
-	part_encoder_noise_scale = 4.0
-	obj_decoder_noise_type = 'uniform'
-	obj_decoder_noise_scale = 4.0
 	snapshot = './checkpoints/{}/model.ckpt'.format(dataset)
 
-	path = snapshot[:snapshot.rindex('/')]
-	if not os.path.exists(path):
-		os.makedirs(path)
-
 	model = SCAE(
-		input_size=[batch_size, canvas_size, canvas_size, n_channels],
-		num_classes=10,
-		n_part_caps=n_part_caps,
-		n_obj_caps=n_obj_caps,
-		n_channels=n_channels,
-		colorize_templates=colorize_templates,
-		use_alpha_channel=use_alpha_channel,
-		prior_within_example_sparsity_weight=prior_within_example_sparsity_weight,
-		prior_between_example_sparsity_weight=prior_between_example_sparsity_weight,
-		posterior_within_example_sparsity_weight=posterior_within_example_sparsity_weight,
-		posterior_between_example_sparsity_weight=posterior_between_example_sparsity_weight,
-		template_nonlin=template_nonlin,
-		color_nonlin=color_nonlin,
-		part_encoder_noise_scale=part_encoder_noise_scale,
-		obj_decoder_noise_type=obj_decoder_noise_type,
-		obj_decoder_noise_scale=obj_decoder_noise_scale,
+		input_size=[batch_size, config['canvas_size'], config['canvas_size'], config['n_channels']],
+		num_classes=config['num_classes'],
+		n_part_caps=config['n_part_caps'],
+		n_obj_caps=config['n_obj_caps'],
+		n_channels=config['n_channels'],
+		colorize_templates=config['colorize_templates'],
+		use_alpha_channel=config['use_alpha_channel'],
+		prior_within_example_sparsity_weight=config['prior_within_example_sparsity_weight'],
+		prior_between_example_sparsity_weight=config['prior_between_example_sparsity_weight'],
+		posterior_within_example_sparsity_weight=config['posterior_within_example_sparsity_weight'],
+		posterior_between_example_sparsity_weight=config['posterior_between_example_sparsity_weight'],
+		template_size=config['template_size'],
+		template_nonlin=config['template_nonlin'],
+		color_nonlin=config['color_nonlin'],
+		part_encoder_noise_scale=config['part_encoder_noise_scale'],
+		obj_decoder_noise_type=config['obj_decoder_noise_type'],
+		obj_decoder_noise_scale=config['obj_decoder_noise_scale'],
+		set_transformer_n_layers=config['set_transformer_n_layers'],
+		set_transformer_n_heads=config['set_transformer_n_heads'],
+		set_transformer_n_dims=config['set_transformer_n_dims'],
+		set_transformer_n_output_dims=config['set_transformer_n_output_dims'],
+		part_cnn_strides=config['part_cnn_strides'],
+		prep=config['prep'],
 		is_training=True,
 		learning_rate=learning_rate,
 		scope='SCAE',
@@ -172,8 +254,14 @@ if __name__ == '__main__':
 		# snapshot=snapshot
 	)
 
-	trainset = get_dataset(dataset, 'train', shape=[canvas_size, canvas_size], file_path='./datasets')
-	testset = get_dataset(dataset, 'test', shape=[canvas_size, canvas_size], file_path='./datasets')
+	trainset = get_dataset(dataset, 'train', shape=[config['canvas_size'], config['canvas_size']], file_path='./datasets',
+	                       save_only=True)
+	testset = get_dataset(dataset, 'test', shape=[config['canvas_size'], config['canvas_size']], file_path='./datasets',
+	                      save_only=True)
+
+	path = snapshot[:snapshot.rindex('/')]
+	if not os.path.exists(path):
+		os.makedirs(path)
 
 	len_trainset = len(trainset['image'])
 	len_testset = len(testset['image'])
@@ -190,8 +278,8 @@ if __name__ == '__main__':
 		random.shuffle(shuffle_indices)
 
 		for i_batch in trange(train_batches, desc='Training'):
-			i_start = (i_batch * batch_size)
 			i_end = min((i_batch + 1) * batch_size, len_trainset)
+			i_start = min(i_batch * batch_size, i_end - batch_size)
 			indices = shuffle_indices[i_start:i_end]
 			images = to_float32(trainset['image'][indices])
 			labels = trainset['label'][indices]
@@ -201,8 +289,8 @@ if __name__ == '__main__':
 		test_acc_prior = 0.
 		test_acc_posterior = 0.
 		for i_batch in trange(test_batches, desc='Testing'):
-			i_start = (i_batch * batch_size)
 			i_end = min((i_batch + 1) * batch_size, len_testset)
+			i_start = min(i_batch * batch_size, i_end - batch_size)
 			images = to_float32(testset['image'][i_start:i_end])
 			labels = testset['label'][i_start:i_end]
 			test_pred_prior, test_pred_posterior, _test_loss = model.sess.run(

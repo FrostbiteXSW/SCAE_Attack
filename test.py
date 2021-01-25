@@ -46,18 +46,19 @@ def bipartite_match(preds, labels, n_classes=None, presence=None):
 if __name__ == '__main__':
 	block_warnings()
 
-	dataset = 'mnist'
+	dataset = 'cifar10'
 	batch_size = 100
-	canvas_size = 28
+	canvas_size = 32
 	n_part_caps = 40
 	n_obj_caps = 32
-	n_channels = 1
+	n_channels = 3
 	colorize_templates = True
 	use_alpha_channel = True
 	prior_within_example_sparsity_weight = 2.
 	prior_between_example_sparsity_weight = 0.35
 	posterior_within_example_sparsity_weight = 0.7
 	posterior_between_example_sparsity_weight = 0.2
+	template_size = 11
 	template_nonlin = 'sigmoid'
 	color_nonlin = 'sigmoid'
 	snapshot = './checkpoints/{}/model.ckpt'.format(dataset)
@@ -78,6 +79,7 @@ if __name__ == '__main__':
 		prior_between_example_sparsity_weight=prior_between_example_sparsity_weight,
 		posterior_within_example_sparsity_weight=posterior_within_example_sparsity_weight,
 		posterior_between_example_sparsity_weight=posterior_between_example_sparsity_weight,
+		template_size=template_size,
 		template_nonlin=template_nonlin,
 		color_nonlin=color_nonlin,
 		is_training=False,
@@ -102,8 +104,8 @@ if __name__ == '__main__':
 	posterior_pres_list = []
 
 	for i_batch in trange(train_batches, desc='Testing trainset'):
-		i_start = (i_batch * batch_size)
 		i_end = min((i_batch + 1) * batch_size, len_trainset)
+		i_start = min(i_batch * batch_size, i_end - batch_size)
 		images = to_float32(trainset['image'][i_start:i_end])
 		labels = trainset['label'][i_start:i_end]
 		test_pred_prior, test_pred_posterior, prior_pres, posterior_pres = model.sess.run(
@@ -112,14 +114,15 @@ if __name__ == '__main__':
 			 model.res.caps_presence_prob,
 			 model.res.posterior_mixing_probs],
 			feed_dict={model.batch_input: images})
-		test_acc_prior += (test_pred_prior == labels).sum()
-		test_acc_posterior += (test_pred_posterior == labels).sum()
-		prior_pres_list.append(prior_pres)
-		posterior_pres_list.append(posterior_pres)
+		n_samples = i_end - (i_batch * batch_size)
+		test_acc_prior += (test_pred_prior == labels)[:n_samples].sum()
+		test_acc_posterior += (test_pred_posterior == labels)[:n_samples].sum()
+		prior_pres_list.append(prior_pres[:n_samples])
+		posterior_pres_list.append(posterior_pres[:n_samples])
 
 	for i_batch in trange(test_batches, desc='Testing testset'):
-		i_start = (i_batch * batch_size)
 		i_end = min((i_batch + 1) * batch_size, len_testset)
+		i_start = min(i_batch * batch_size, i_end - batch_size)
 		images = to_float32(testset['image'][i_start:i_end])
 		labels = testset['label'][i_start:i_end]
 		test_pred_prior, test_pred_posterior, prior_pres, posterior_pres = model.sess.run(
@@ -128,10 +131,11 @@ if __name__ == '__main__':
 			 model.res.caps_presence_prob,
 			 model.res.posterior_mixing_probs],
 			feed_dict={model.batch_input: images})
-		test_acc_prior += (test_pred_prior == labels).sum()
-		test_acc_posterior += (test_pred_posterior == labels).sum()
-		prior_pres_list.append(prior_pres)
-		posterior_pres_list.append(posterior_pres)
+		n_samples = i_end - (i_batch * batch_size)
+		test_acc_prior += (test_pred_prior == labels)[:n_samples].sum()
+		test_acc_posterior += (test_pred_posterior == labels)[:n_samples].sum()
+		prior_pres_list.append(prior_pres[:n_samples])
+		posterior_pres_list.append(posterior_pres[:n_samples])
 
 	print('Supervised acc: prior={:.6f}, posterior={:.6f}'
 	      .format(test_acc_prior / (len_trainset + len_testset), test_acc_posterior / (len_trainset + len_testset)))
@@ -146,21 +150,21 @@ if __name__ == '__main__':
 		precompute_distances=True,
 		n_jobs=-1,
 		max_iter=1000,
-	).fit(prior_pres_list[:len(trainset['image'])])
+	).fit(prior_pres_list)
 
 	kmeans_posterior = KMeans(
 		n_clusters=10,
 		precompute_distances=True,
 		n_jobs=-1,
 		max_iter=1000,
-	).fit(posterior_pres_list[:len(trainset['image'])])
+	).fit(posterior_pres_list)
 
 	kmeans_pred_list_prior = kmeans_prior.predict(prior_pres_list)
 	kmeans_pred_list_posterior = kmeans_posterior.predict(posterior_pres_list)
 	ground_truth_list = np.concatenate([trainset['label'], testset['label']])
 
-	p2l_prior = bipartite_match(kmeans_pred_list_prior[:len(trainset['image'])], trainset['label'], 10)
-	p2l_posterior = bipartite_match(kmeans_pred_list_posterior[:len(trainset['image'])], trainset['label'], 10)
+	p2l_prior = bipartite_match(kmeans_pred_list_prior[:len_trainset], trainset['label'], 10)
+	p2l_posterior = bipartite_match(kmeans_pred_list_posterior[:len_trainset], trainset['label'], 10)
 
 	for i in range(len(kmeans_pred_list_prior)):
 		# kmeans_label to gt_label
