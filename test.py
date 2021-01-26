@@ -42,7 +42,7 @@ def bipartite_match(preds, labels, n_classes=None, presence=None):
 if __name__ == '__main__':
 	block_warnings()
 
-	config = config_svhn
+	config = config_mnist
 	batch_size = 100
 	max_train_steps = 300
 	learning_rate = 3e-5
