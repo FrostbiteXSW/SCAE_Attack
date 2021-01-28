@@ -199,7 +199,7 @@ if __name__ == '__main__':
 	optimizer_config_name = 'ADAM_fast'
 	num_samples = 1000
 	outer_iteration = 9
-	classifiers = 'PriPosKL'
+	classifiers = 'PriPosK'
 
 	# classifiers should be set as [Pri|Pos][K|L]
 	# For example: PriK means prior K-Means classifier. PosL means posterior linear classifier.
@@ -224,9 +224,9 @@ if __name__ == '__main__':
 		template_size=config['template_size'],
 		template_nonlin=config['template_nonlin'],
 		color_nonlin=config['color_nonlin'],
-		part_encoder_noise_scale=config['part_encoder_noise_scale'],
-		obj_decoder_noise_type=config['obj_decoder_noise_type'],
-		obj_decoder_noise_scale=config['obj_decoder_noise_scale'],
+		part_encoder_noise_scale=0.,
+		obj_decoder_noise_type=None,
+		obj_decoder_noise_scale=0.,
 		set_transformer_n_layers=config['set_transformer_n_layers'],
 		set_transformer_n_heads=config['set_transformer_n_heads'],
 		set_transformer_n_dims=config['set_transformer_n_dims'],
