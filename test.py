@@ -42,7 +42,7 @@ def bipartite_match(preds, labels, n_classes=None, presence=None):
 if __name__ == '__main__':
 	block_warnings()
 
-	config = config_mnist
+	config = config_fashion_mnist
 	batch_size = 100
 	max_train_steps = 300
 	learning_rate = 3e-5
@@ -77,10 +77,16 @@ if __name__ == '__main__':
 		snapshot=snapshot
 	)
 
-	trainset = get_dataset(config['dataset'], 'train', shape=[config['canvas_size'], config['canvas_size']],
-	                       file_path='./datasets', save_only=False)
-	testset = get_dataset(config['dataset'], 'test', shape=[config['canvas_size'], config['canvas_size']],
-	                      file_path='./datasets', save_only=False)
+	if config['dataset'] == 'gtsrb':
+		trainset = get_gtsrb('train', shape=[config['canvas_size'], config['canvas_size']], file_path='./datasets',
+		                     save_only=False, gtsrb_raw_file_path='./datasets/GTSRB', gtsrb_classes=config['classes'])
+		testset = get_gtsrb('test', shape=[config['canvas_size'], config['canvas_size']], file_path='./datasets',
+		                    save_only=False, gtsrb_raw_file_path='./datasets/GTSRB', gtsrb_classes=config['classes'])
+	else:
+		trainset = get_dataset(config['dataset'], 'train', shape=[config['canvas_size'], config['canvas_size']],
+		                       file_path='./datasets', save_only=False)
+		testset = get_dataset(config['dataset'], 'test', shape=[config['canvas_size'], config['canvas_size']],
+		                      file_path='./datasets', save_only=False)
 
 	path = snapshot[:snapshot.rindex('/')]
 	if not os.path.exists(path):

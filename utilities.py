@@ -1,5 +1,6 @@
 import abc
 import copy
+import csv
 import math
 import os
 import random
@@ -233,6 +234,97 @@ def get_dataset(name, split, shape=None, batch_size=100, file_path=None, save_on
 		np.savez_compressed(file_name, image=output['image'], label=output['label'])
 
 	return output
+
+
+def get_gtsrb(split, shape=None, file_path=None, save_only=False,
+              gtsrb_raw_file_path=None, gtsrb_classes=None):
+	if not split:
+		raise Exception('Split should not be None.')
+
+	output = AttrDict(
+		image=[],
+		label=[]
+	)
+
+	if file_path:
+		file_name = 'gtsrb_' + split + '.npz'
+		if file_path[-1] != '/' or file_path[-1] != '\\':
+			file_name = '/' + file_name
+		file_name = file_path + file_name
+
+		if not save_only:
+			if os.path.exists(file_name):
+				print('Info: Loading dataset file from \"{}\".'.format(file_name))
+
+				if shape is not None:
+					print('Warning: Image will remain unchanged. Leave \"file_path\" empty if you want to change them.')
+
+				npzfile = np.load(file_name)
+				output['image'] = npzfile['image']
+				output['label'] = npzfile['label']
+				return output
+			else:
+				print('Warning: Dataset file \"{}\" not found. Will save a new one.'.format(file_name))
+
+	if gtsrb_raw_file_path is None:
+		raise Exception('Argument \"gtsrb_raw_file_path\" must be given.')
+	output['image'], output['label'] = _read_traffic_signs(gtsrb_raw_file_path + '/' + split,
+	                                                       shape=[28, 28] if shape is None else shape,
+	                                                       classes=gtsrb_classes)
+	if file_path:
+		print('Info: Saving dataset file into \"{}\".'.format(file_name))
+		if not os.path.exists(file_path):
+			os.makedirs(file_path)
+		np.savez_compressed(file_name, image=output['image'], label=output['label'])
+
+	return output
+
+
+def _read_traffic_signs(root_path, shape=None, classes=None):
+	"""Reads traffic sign data for German Traffic Sign Recognition Benchmark.
+		Arguments: path to the traffic sign data, for example './GTSRB/Training'
+		Returns:   list of images, list of corresponding labels"""
+
+	if shape is None:
+		shape = [224, 224]
+
+	images = []
+	labels = []
+
+	# loop over all classes
+	for c in range(43):
+		prefix = root_path + '/' + format(c, '05d') + '/'  # subdirectory for class
+		gtFile = open(prefix + 'GT-' + format(c, '05d') + '.csv')  # annotations file
+		gtReader = csv.reader(gtFile, delimiter=';')  # csv parser for annotations file
+		next(gtReader)  # skip header
+		# loop over all images in current annotations file
+		for row in gtReader:
+			# the 1th column is the filename
+			img = np.array(plt.imread(prefix + row[0]))
+			img = img[int(row[4]):int(row[6]), int(row[3]):int(row[5]), :]
+			img = (img * 255).astype('uint8')
+			images.append(img[None])
+			labels.append(np.array([int(row[7])]))
+		gtFile.close()
+
+	if classes is not None:
+		sub_images = []
+		sub_labels = []
+		for i in range(len(labels)):
+			if labels[i] in classes:
+				sub_images.append(images[i])
+				sub_labels.append(np.array([classes.index(labels[i])]))
+		images = sub_images
+		labels = sub_labels
+
+	new_image = np.zeros([len(images), *shape, 3], dtype=np.uint8)
+	for i in trange(len(images), desc='Resizing images'):
+		new_image[i] = imresize(images[i][0], shape)
+	images = new_image
+
+	labels = np.concatenate(labels)
+
+	return images, labels
 
 
 def get_samples_by_labels(dataset: AttrDict, labels: list):

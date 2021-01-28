@@ -11,7 +11,7 @@ import tensorflow as tf
 from tqdm import trange
 
 from model import stacked_capsule_autoencoders
-from utilities import get_dataset, block_warnings, ModelCollector, to_float32
+from utilities import get_dataset, get_gtsrb, block_warnings, ModelCollector, to_float32
 
 
 class SCAE(ModelCollector):
@@ -188,6 +188,34 @@ config_fashion_mnist = {
 	'prep': 'none'
 }
 
+config_gtsrb = {
+	'dataset': 'gtsrb',
+	'canvas_size': 40,
+	'n_part_caps': 24,
+	'n_obj_caps': 32,
+	'n_channels': 3,
+	'classes': None,
+	'num_classes': 43,
+	'colorize_templates': True,
+	'use_alpha_channel': True,
+	'prior_within_example_sparsity_weight': 2.,
+	'prior_between_example_sparsity_weight': 0.35,
+	'posterior_within_example_sparsity_weight': 0.7,
+	'posterior_between_example_sparsity_weight': 0.2,
+	'template_size': 14,
+	'template_nonlin': 'sigmoid',
+	'color_nonlin': 'relu1',
+	'part_encoder_noise_scale': 4.0,
+	'obj_decoder_noise_type': 'uniform',
+	'obj_decoder_noise_scale': 4.0,
+	'set_transformer_n_layers': 3,
+	'set_transformer_n_heads': 2,
+	'set_transformer_n_dims': 64,
+	'set_transformer_n_output_dims': 128,
+	'part_cnn_strides': [1, 1, 2, 2],
+	'prep': 'none'
+}
+
 config_svhn = {
 	'dataset': 'svhn_cropped',
 	'canvas_size': 32,
@@ -242,13 +270,12 @@ config_cifar10 = {
 	'prep': 'sobel'
 }
 
-
 if __name__ == '__main__':
 	block_warnings()
 
-	config = config_fashion_mnist
+	config = config_gtsrb
 	batch_size = 100
-	max_train_steps = 300
+	max_train_steps = 600
 	learning_rate = 3e-5
 	snapshot = './checkpoints/{}/model.ckpt'.format(config['dataset'])
 
@@ -280,13 +307,19 @@ if __name__ == '__main__':
 		learning_rate=learning_rate,
 		scope='SCAE',
 		# use_lr_schedule=False,
-		# snapshot=snapshot
+		snapshot=snapshot
 	)
 
-	trainset = get_dataset(config['dataset'], 'train', shape=[config['canvas_size'], config['canvas_size']],
-	                       file_path='./datasets', save_only=True)
-	testset = get_dataset(config['dataset'], 'test', shape=[config['canvas_size'], config['canvas_size']],
-	                      file_path='./datasets', save_only=True)
+	if config['dataset'] == 'gtsrb':
+		trainset = get_gtsrb('train', shape=[config['canvas_size'], config['canvas_size']], file_path='./datasets',
+		                     save_only=True, gtsrb_raw_file_path='./datasets/GTSRB', gtsrb_classes=config['classes'])
+		testset = get_gtsrb('test', shape=[config['canvas_size'], config['canvas_size']], file_path='./datasets',
+		                    save_only=True, gtsrb_raw_file_path='./datasets/GTSRB', gtsrb_classes=config['classes'])
+	else:
+		trainset = get_dataset(config['dataset'], 'train', shape=[config['canvas_size'], config['canvas_size']],
+		                       file_path='./datasets', save_only=True)
+		testset = get_dataset(config['dataset'], 'test', shape=[config['canvas_size'], config['canvas_size']],
+		                      file_path='./datasets', save_only=True)
 
 	path = snapshot[:snapshot.rindex('/')]
 	if not os.path.exists(path):

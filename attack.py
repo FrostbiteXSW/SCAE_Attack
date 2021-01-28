@@ -2,11 +2,9 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import time
-
 import joblib
 
-from model import stacked_capsule_autoencoders
+from train import *
 from utilities import *
 
 
@@ -34,6 +32,12 @@ class SCAE_L2_Attack(ModelCollector):
 			prior_between_example_sparsity_weight=1.,
 			posterior_within_example_sparsity_weight=10.,
 			posterior_between_example_sparsity_weight=10.,
+			set_transformer_n_layers=3,
+			set_transformer_n_heads=1,
+			set_transformer_n_dims=16,
+			set_transformer_n_output_dims=256,
+			part_cnn_strides=None,
+			prep='none',
 			learning_rate=1e-4,
 			optimizer='Adam',
 			scope='SCAE',
@@ -69,6 +73,12 @@ class SCAE_L2_Attack(ModelCollector):
 			                                          prior_between_example_sparsity_weight,
 			                                          posterior_within_example_sparsity_weight,
 			                                          posterior_between_example_sparsity_weight,
+			                                          set_transformer_n_layers,
+			                                          set_transformer_n_heads,
+			                                          set_transformer_n_dims,
+			                                          set_transformer_n_output_dims,
+			                                          part_cnn_strides,
+			                                          prep,
 			                                          scope)
 
 			# Placeholders for variables to initialize
@@ -185,15 +195,72 @@ if __name__ == '__main__':
 	block_warnings()
 
 	# Attack configuration
-	dataset = 'mnist'
-	optimizer_config_name = 'ADAM_normal'
-	num_samples = 500
+	config = config_mnist
+	optimizer_config_name = 'ADAM_fast'
+	num_samples = 1000
 	outer_iteration = 9
 	classifiers = 'PriPosKL'
 
 	# classifiers should be set as [Pri|Pos][K|L]
 	# For example: PriK means prior K-Means classifier. PosL means posterior linear classifier.
 	#              PriPosKL means prior & posterior K-Means classifiers and prior & posterior linear classifiers.
+
+	snapshot = './checkpoints/{}/model.ckpt'.format(config['dataset'])
+	inner_iteration, learning_rate, optimizer = optimizer_configs[optimizer_config_name]
+
+	# Create the attack model according to parameters above
+	model = SCAE_L2_Attack(
+		input_size=[1, config['canvas_size'], config['canvas_size'], config['n_channels']],
+		num_classes=config['num_classes'],
+		n_part_caps=config['n_part_caps'],
+		n_obj_caps=config['n_obj_caps'],
+		n_channels=config['n_channels'],
+		colorize_templates=config['colorize_templates'],
+		use_alpha_channel=config['use_alpha_channel'],
+		prior_within_example_sparsity_weight=config['prior_within_example_sparsity_weight'],
+		prior_between_example_sparsity_weight=config['prior_between_example_sparsity_weight'],
+		posterior_within_example_sparsity_weight=config['posterior_within_example_sparsity_weight'],
+		posterior_between_example_sparsity_weight=config['posterior_between_example_sparsity_weight'],
+		template_size=config['template_size'],
+		template_nonlin=config['template_nonlin'],
+		color_nonlin=config['color_nonlin'],
+		part_encoder_noise_scale=config['part_encoder_noise_scale'],
+		obj_decoder_noise_type=config['obj_decoder_noise_type'],
+		obj_decoder_noise_scale=config['obj_decoder_noise_scale'],
+		set_transformer_n_layers=config['set_transformer_n_layers'],
+		set_transformer_n_heads=config['set_transformer_n_heads'],
+		set_transformer_n_dims=config['set_transformer_n_dims'],
+		set_transformer_n_output_dims=config['set_transformer_n_output_dims'],
+		part_cnn_strides=config['part_cnn_strides'],
+		prep=config['prep'],
+		learning_rate=learning_rate,
+		optimizer=optimizer,
+		capsule_loss_type=('Pri' if 'Pri' in classifiers else '') + ('Pos' if 'Pos' in classifiers else ''),
+		scope='SCAE',
+		snapshot=snapshot
+	)
+
+	# Load prior K-Means classifier
+	if 'Pri' in classifiers and 'K' in classifiers:
+		kmeans_pri = joblib.load('./checkpoints/{}/kmeans_prior.m'.format(config['dataset']))
+		npz = np.load('./checkpoints/{}/kmeans_labels_prior.npz'.format(config['dataset']))
+		p2l_pri = npz['preds_2_labels']
+		npz.close()
+
+	# Load posterior K-Means classifier
+	if 'Pos' in classifiers and 'K' in classifiers:
+		kmeans_pos = joblib.load('./checkpoints/{}/kmeans_posterior.m'.format(config['dataset']))
+		npz = np.load('./checkpoints/{}/kmeans_labels_posterior.npz'.format(config['dataset']))
+		p2l_pos = npz['preds_2_labels']
+		npz.close()
+
+	# Load dataset
+	if config['dataset'] == 'gtsrb':
+		testset = get_gtsrb('test', shape=[config['canvas_size'], config['canvas_size']], file_path='./datasets',
+		                    save_only=False, gtsrb_raw_file_path='./datasets/GTSRB', gtsrb_classes=config['classes'])
+	else:
+		testset = get_dataset(config['dataset'], 'test', shape=[config['canvas_size'], config['canvas_size']],
+		                      file_path='./datasets', save_only=False)
 
 	# Create result directory
 	now = time.localtime()
@@ -207,61 +274,6 @@ if __name__ == '__main__':
 	)
 	if not os.path.exists(path + 'images/'):
 		os.makedirs(path + 'images/')
-
-	# Model parameters. Edit them ONLY IF YOU KNOW WHAT YOU ARE DOING!
-	canvas_size = 28
-	n_part_caps = 40
-	n_obj_caps = 32
-	n_channels = 1
-	colorize_templates = True
-	use_alpha_channel = True
-	prior_within_example_sparsity_weight = 2.
-	prior_between_example_sparsity_weight = 0.35
-	posterior_within_example_sparsity_weight = 0.7
-	posterior_between_example_sparsity_weight = 0.2
-	template_nonlin = 'sigmoid'
-	color_nonlin = 'sigmoid'
-	snapshot = './checkpoints/{}/model.ckpt'.format(dataset)
-	inner_iteration, learning_rate, optimizer = optimizer_configs[optimizer_config_name]
-
-	# Create the attack model according to parameters above
-	model = SCAE_L2_Attack(
-		input_size=[1, canvas_size, canvas_size, n_channels],
-		num_classes=10,
-		n_part_caps=n_part_caps,
-		n_obj_caps=n_obj_caps,
-		n_channels=n_channels,
-		colorize_templates=colorize_templates,
-		use_alpha_channel=use_alpha_channel,
-		prior_within_example_sparsity_weight=prior_within_example_sparsity_weight,
-		prior_between_example_sparsity_weight=prior_between_example_sparsity_weight,
-		posterior_within_example_sparsity_weight=posterior_within_example_sparsity_weight,
-		posterior_between_example_sparsity_weight=posterior_between_example_sparsity_weight,
-		template_nonlin=template_nonlin,
-		color_nonlin=color_nonlin,
-		learning_rate=learning_rate,
-		optimizer=optimizer,
-		scope='SCAE',
-		snapshot=snapshot,
-		capsule_loss_type=('Pri' if 'Pri' in classifiers else '') + ('Pos' if 'Pos' in classifiers else '')
-	)
-
-	# Load prior K-Means classifier
-	if 'Pri' in classifiers and 'K' in classifiers:
-		kmeans_pri = joblib.load('./checkpoints/{}/kmeans_prior.m'.format(dataset))
-		npz = np.load('./checkpoints/{}/kmeans_labels_prior.npz'.format(dataset))
-		p2l_pri = npz['preds_2_labels']
-		npz.close()
-
-	# Load posterior K-Means classifier
-	if 'Pos' in classifiers and 'K' in classifiers:
-		kmeans_pos = joblib.load('./checkpoints/{}/kmeans_posterior.m'.format(dataset))
-		npz = np.load('./checkpoints/{}/kmeans_labels_posterior.npz'.format(dataset))
-		p2l_pos = npz['preds_2_labels']
-		npz.close()
-
-	# Load dataset
-	testset = get_dataset(dataset, 'test', shape=[canvas_size, canvas_size], file_path='./datasets')
 
 	# Variables to save the attack result
 	succeed_count = 0
