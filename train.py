@@ -275,7 +275,7 @@ if __name__ == '__main__':
 
 	config = config_gtsrb
 	batch_size = 100
-	max_train_steps = 600
+	max_train_steps = 300
 	learning_rate = 3e-5
 	snapshot = './checkpoints/{}/model.ckpt'.format(config['dataset'])
 

@@ -195,7 +195,7 @@ if __name__ == '__main__':
 	block_warnings()
 
 	# Attack configuration
-	config = config_mnist
+	config = config_fashion_mnist
 	optimizer_config_name = 'ADAM_fast'
 	num_samples = 1000
 	outer_iteration = 9
@@ -307,9 +307,27 @@ if __name__ == '__main__':
 		score_to_collect_validation['PosL'] = model.res.posterior_cls_pred
 
 	# Start the attack on selected samples
-	for index in shuffle_indices[:num_samples]:
+	i = 0
+	n = num_samples
+	while n > 0:
+		index = shuffle_indices[i]
+		i += 1
+
 		source_image = to_float32(testset['image'][index])
 		source_label = testset['label'][index]
+
+		# Skip unrecognized samples
+		score_list_validation = model.run(source_image[None], score_to_collect_validation)
+		if 'PriK' in score_to_collect_validation.keys() \
+				and p2l_pri[kmeans_pri.predict(score_list_validation['PriK'])[0]] != source_label \
+				or 'PosK' in score_to_collect_validation.keys() \
+				and p2l_pos[kmeans_pos.predict(score_list_validation['PosK'].sum(1))[0]] != source_label \
+				or 'PriL' in score_to_collect_validation.keys() \
+				and score_list_validation['PriL'][0] != source_label \
+				or 'PosL' in score_to_collect_validation.keys() \
+				and score_list_validation['PosL'][0] != source_label:
+			continue
+		n -= 1
 
 		# Calculate mask
 		mask = imblur(source_image, times=1)
@@ -425,8 +443,8 @@ if __name__ == '__main__':
 		print()
 
 	# Save the final result of complete attack
-	result = 'Optimizer configuration: {}. Success rate: {:.4f}. Average pert amount: {:.4f}.'.format(
-		optimizer_config_name, succeed_count / num_samples, succeed_pert_amount / succeed_count)
+	result = 'Optimizer configuration: {}. Dataset: {}. Success rate: {:.4f}. Average pert amount: {:.4f}.'.format(
+		optimizer_config_name, config['dataset'], succeed_count / num_samples, succeed_pert_amount / succeed_count)
 	print(result)
 	if os.path.exists(path + 'result.txt'):
 		os.remove(path + 'result.txt')
