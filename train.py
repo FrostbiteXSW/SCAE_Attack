@@ -33,7 +33,6 @@ class SCAE(ModelCollector):
 			obj_decoder_noise_type=None,
 			obj_decoder_noise_scale=0.,
 			num_classes=10,
-			stop_gradient=True,
 			prior_within_example_sparsity_weight=1.,
 			prior_between_example_sparsity_weight=1.,
 			posterior_within_example_sparsity_weight=10.,
@@ -77,7 +76,6 @@ class SCAE(ModelCollector):
 			                                          obj_decoder_noise_type,
 			                                          obj_decoder_noise_scale,
 			                                          num_classes,
-			                                          stop_gradient,
 			                                          prior_within_example_sparsity_weight,
 			                                          prior_between_example_sparsity_weight,
 			                                          posterior_within_example_sparsity_weight,
@@ -191,8 +189,8 @@ config_fashion_mnist = {
 config_gtsrb = {
 	'dataset': 'gtsrb',
 	'canvas_size': 40,
-	'n_part_caps': 24,
-	'n_obj_caps': 32,
+	'n_part_caps': 40,
+	'n_obj_caps': 64,
 	'n_channels': 3,
 	'classes': None,
 	'num_classes': 43,
@@ -205,13 +203,13 @@ config_gtsrb = {
 	'template_size': 14,
 	'template_nonlin': 'sigmoid',
 	'color_nonlin': 'relu1',
-	'part_encoder_noise_scale': 4.0,
-	'obj_decoder_noise_type': 'uniform',
-	'obj_decoder_noise_scale': 4.0,
+	'part_encoder_noise_scale': 0,
+	'obj_decoder_noise_type': None,
+	'obj_decoder_noise_scale': 0,
 	'set_transformer_n_layers': 3,
 	'set_transformer_n_heads': 2,
 	'set_transformer_n_dims': 64,
-	'set_transformer_n_output_dims': 128,
+	'set_transformer_n_output_dims': 256,
 	'part_cnn_strides': [1, 1, 2, 2],
 	'prep': 'none'
 }
@@ -275,7 +273,7 @@ if __name__ == '__main__':
 
 	config = config_gtsrb
 	batch_size = 100
-	max_train_steps = 300
+	max_train_steps = 3000
 	learning_rate = 3e-5
 	snapshot = './checkpoints/{}/model.ckpt'.format(config['dataset'])
 
