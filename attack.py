@@ -193,7 +193,7 @@ if __name__ == '__main__':
 	block_warnings()
 
 	# Attack configuration
-	config = config_fashion_mnist
+	config = config_gtsrb
 	optimizer_config_name = 'ADAM_fast'
 	num_samples = 1000
 	outer_iteration = 9
@@ -254,7 +254,7 @@ if __name__ == '__main__':
 
 	# Load dataset
 	if config['dataset'] == 'gtsrb':
-		testset = get_gtsrb('test', shape=[config['canvas_size'], config['canvas_size']], file_path='./datasets',
+		testset = get_gtsrb('train', shape=[config['canvas_size'], config['canvas_size']], file_path='./datasets',
 		                    save_only=False, gtsrb_raw_file_path='./datasets/GTSRB', gtsrb_classes=config['classes'])
 	else:
 		testset = get_dataset(config['dataset'], 'test', shape=[config['canvas_size'], config['canvas_size']],
@@ -324,6 +324,7 @@ if __name__ == '__main__':
 				and score_list_validation['PriL'][0] != source_label \
 				or 'PosL' in score_to_collect_validation.keys() \
 				and score_list_validation['PosL'][0] != source_label:
+			print("Skipping sample {}.".format(index))
 			continue
 		n -= 1
 

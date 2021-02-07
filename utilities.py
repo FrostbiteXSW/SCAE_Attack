@@ -271,6 +271,10 @@ def get_gtsrb(split, shape=None, file_path=None, save_only=False,
 	output['image'], output['label'] = _read_traffic_signs(gtsrb_raw_file_path + '/' + split,
 	                                                       shape=[28, 28] if shape is None else shape,
 	                                                       classes=gtsrb_classes)
+
+	for i in range(len(output['image'])):
+		output['image'][i] = (output['image'][i].astype(np.float32) / output['image'][i].max() * 255).astype(np.uint8)
+
 	if file_path:
 		print('Info: Saving dataset file into \"{}\".'.format(file_name))
 		if not os.path.exists(file_path):

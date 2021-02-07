@@ -192,8 +192,8 @@ config_gtsrb = {
 	'n_part_caps': 40,
 	'n_obj_caps': 64,
 	'n_channels': 3,
-	'classes': None,
-	'num_classes': 43,
+	'classes': [1, 2, 7, 10, 11, 13, 14, 17, 35, 38],
+	'num_classes': 10,
 	'colorize_templates': True,
 	'use_alpha_channel': True,
 	'prior_within_example_sparsity_weight': 2.,
@@ -273,7 +273,7 @@ if __name__ == '__main__':
 
 	config = config_gtsrb
 	batch_size = 100
-	max_train_steps = 3000
+	max_train_steps = 300
 	learning_rate = 3e-5
 	snapshot = './checkpoints/{}/model.ckpt'.format(config['dataset'])
 
@@ -305,7 +305,7 @@ if __name__ == '__main__':
 		learning_rate=learning_rate,
 		scope='SCAE',
 		# use_lr_schedule=False,
-		snapshot=snapshot
+		# snapshot=snapshot
 	)
 
 	if config['dataset'] == 'gtsrb':
@@ -331,6 +331,29 @@ if __name__ == '__main__':
 
 	random.seed(time.time())
 	shuffle_indices = list(range(len_trainset))
+
+	# Get the best score of last snapshot
+	test_loss = 0.
+	test_acc_prior = 0.
+	test_acc_posterior = 0.
+	for i_batch in trange(test_batches, desc='Testing'):
+		i_end = min((i_batch + 1) * batch_size, len_testset)
+		i_start = min(i_batch * batch_size, i_end - batch_size)
+		images = to_float32(testset['image'][i_start:i_end])
+		labels = testset['label'][i_start:i_end]
+		test_pred_prior, test_pred_posterior, _test_loss = model.sess.run(
+			[model.res.prior_cls_pred, model.res.posterior_cls_pred, model.loss],
+			feed_dict={model.batch_input: images, model.labels: labels})
+		test_loss += _test_loss
+		test_acc_prior += (test_pred_prior == labels).sum()
+		test_acc_posterior += (test_pred_posterior == labels).sum()
+		assert not np.isnan(test_loss)
+	print('loss: {:.6f}  prior acc: {:.6f}  posterior acc: {:.6f}'.format(
+		test_loss / len_testset,
+		test_acc_prior / len_testset,
+		test_acc_posterior / len_testset
+	))
+	best_score = (test_acc_prior / len_testset + test_acc_posterior / len_testset) / 2
 
 	for epoch in range(max_train_steps):
 		print('\n[Epoch {}/{}]'.format(epoch + 1, max_train_steps))
@@ -366,5 +389,8 @@ if __name__ == '__main__':
 			test_acc_posterior / len_testset
 		))
 
-		print('Saving model...')
-		model.saver.save(model.sess, snapshot)
+		score = (test_acc_prior / len_testset + test_acc_posterior / len_testset) / 2
+		if score > best_score:
+			print('Saving model...({:.6f} > {:.6f})'.format(score, best_score))
+			model.saver.save(model.sess, snapshot)
+			best_score = score

@@ -42,7 +42,7 @@ def bipartite_match(preds, labels, n_classes=None, presence=None):
 if __name__ == '__main__':
 	block_warnings()
 
-	config = config_fashion_mnist
+	config = config_gtsrb
 	batch_size = 100
 	max_train_steps = 300
 	learning_rate = 3e-5
@@ -148,14 +148,14 @@ if __name__ == '__main__':
 	posterior_pres_list = np.concatenate(posterior_pres_list).sum(1)
 
 	kmeans_prior = KMeans(
-		n_clusters=10,
+		n_clusters=config['num_classes'],
 		precompute_distances=True,
 		n_jobs=-1,
 		max_iter=1000,
 	).fit(prior_pres_list)
 
 	kmeans_posterior = KMeans(
-		n_clusters=10,
+		n_clusters=config['num_classes'],
 		precompute_distances=True,
 		n_jobs=-1,
 		max_iter=1000,
@@ -165,8 +165,8 @@ if __name__ == '__main__':
 	kmeans_pred_list_posterior = kmeans_posterior.predict(posterior_pres_list)
 	ground_truth_list = np.concatenate([trainset['label'], testset['label']])
 
-	p2l_prior = bipartite_match(kmeans_pred_list_prior[:len_trainset], trainset['label'], 10)
-	p2l_posterior = bipartite_match(kmeans_pred_list_posterior[:len_trainset], trainset['label'], 10)
+	p2l_prior = bipartite_match(kmeans_pred_list_prior[:len_trainset], trainset['label'], config['num_classes'])
+	p2l_posterior = bipartite_match(kmeans_pred_list_posterior[:len_trainset], trainset['label'], config['num_classes'])
 
 	for i in range(len(kmeans_pred_list_prior)):
 		# kmeans_label to gt_label
