@@ -132,8 +132,9 @@ class SCAE(ModelCollector):
 		return self.sess.run(self.res.prior_cls_logits, feed_dict={self.batch_input: images})
 
 
+MNIST = 'mnist'
 config_mnist = {
-	'dataset': 'mnist',
+	'dataset': MNIST,
 	'canvas_size': 40,
 	'n_part_caps': 24,
 	'n_obj_caps': 24,
@@ -159,8 +160,9 @@ config_mnist = {
 	'prep': 'none'
 }
 
+FASHION_MNIST = 'fashion_mnist'
 config_fashion_mnist = {
-	'dataset': 'fashion_mnist',
+	'dataset': FASHION_MNIST,
 	'canvas_size': 40,
 	'n_part_caps': 24,
 	'n_obj_caps': 24,
@@ -186,8 +188,9 @@ config_fashion_mnist = {
 	'prep': 'none'
 }
 
+GTSRB = 'gtsrb'
 config_gtsrb = {
-	'dataset': 'gtsrb',
+	'dataset': GTSRB,
 	'canvas_size': 40,
 	'n_part_caps': 40,
 	'n_obj_caps': 64,
@@ -214,8 +217,9 @@ config_gtsrb = {
 	'prep': 'none'
 }
 
+SVHN = 'svhn_cropped'
 config_svhn = {
-	'dataset': 'svhn_cropped',
+	'dataset': SVHN,
 	'canvas_size': 32,
 	'n_part_caps': 24,
 	'n_obj_caps': 32,
@@ -241,8 +245,9 @@ config_svhn = {
 	'prep': 'sobel'
 }
 
+CIFAR10 = 'cifar10'
 config_cifar10 = {
-	'dataset': 'cifar10',
+	'dataset': CIFAR10,
 	'canvas_size': 32,
 	'n_part_caps': 32,
 	'n_obj_caps': 64,
@@ -271,7 +276,7 @@ config_cifar10 = {
 if __name__ == '__main__':
 	block_warnings()
 
-	config = config_gtsrb
+	config = config_svhn
 	batch_size = 100
 	max_train_steps = 300
 	learning_rate = 3e-5
@@ -308,7 +313,7 @@ if __name__ == '__main__':
 		# snapshot=snapshot
 	)
 
-	if config['dataset'] == 'gtsrb':
+	if config['dataset'] == GTSRB:
 		trainset = get_gtsrb('train', shape=[config['canvas_size'], config['canvas_size']], file_path='./datasets',
 		                     save_only=True, gtsrb_raw_file_path='./datasets/GTSRB', gtsrb_classes=config['classes'])
 		testset = get_gtsrb('test', shape=[config['canvas_size'], config['canvas_size']], file_path='./datasets',
@@ -353,7 +358,7 @@ if __name__ == '__main__':
 		test_acc_prior / len_testset,
 		test_acc_posterior / len_testset
 	))
-	best_score = (test_acc_prior / len_testset + test_acc_posterior / len_testset) / 2
+	best_score = test_loss / len_testset
 
 	for epoch in range(max_train_steps):
 		print('\n[Epoch {}/{}]'.format(epoch + 1, max_train_steps))
@@ -389,8 +394,8 @@ if __name__ == '__main__':
 			test_acc_posterior / len_testset
 		))
 
-		score = (test_acc_prior / len_testset + test_acc_posterior / len_testset) / 2
-		if score > best_score:
+		score = test_loss / len_testset
+		if score < best_score:
 			print('Saving model...({:.6f} > {:.6f})'.format(score, best_score))
 			model.saver.save(model.sess, snapshot)
 			best_score = score

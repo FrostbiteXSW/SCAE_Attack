@@ -45,7 +45,7 @@ def imshow(im: np.ndarray, file_path=None):
 			n_y = n_x
 		else:
 			n_y = math.ceil(len(im) / n_x)
-		ims = np.zeros([im.shape[1] * n_y, im.shape[2] * n_x, im.shape[3]])
+		ims = np.zeros([im.shape[1] * n_y, im.shape[2] * n_x, im.shape[3]], dtype=im.dtype)
 		for i in range(len(im)):
 			x, y = i // n_x, i % n_x
 			ims[im.shape[1] * x:im.shape[1] * (x + 1), im.shape[2] * y:im.shape[2] * (y + 1), :] = im[i]
