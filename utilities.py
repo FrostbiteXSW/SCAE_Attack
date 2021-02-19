@@ -273,7 +273,9 @@ def get_gtsrb(split, shape=None, file_path=None, save_only=False,
 	                                                       classes=gtsrb_classes)
 
 	for i in range(len(output['image'])):
-		output['image'][i] = (output['image'][i].astype(np.float32) / output['image'][i].max() * 255).astype(np.uint8)
+		_min = output['image'][i].min()
+		_max = output['image'][i].max()
+		output['image'][i] = ((output['image'][i].astype(np.float32) - _min) / (_max - _min) * 255).astype(np.uint8)
 
 	if file_path:
 		print('Info: Saving dataset file into \"{}\".'.format(file_name))
