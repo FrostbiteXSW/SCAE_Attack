@@ -253,9 +253,12 @@ if __name__ == '__main__':
 		npz.close()
 
 	# Load dataset
-	if config['dataset'] == 'gtsrb':
+	if config['dataset'] == GTSRB:
 		testset = get_gtsrb('train', shape=[config['canvas_size'], config['canvas_size']], file_path='./datasets',
 		                    save_only=False, gtsrb_raw_file_path='./datasets/GTSRB', gtsrb_classes=config['classes'])
+	elif config['dataset'] == FASHION_MNIST:
+		testset = get_dataset(config['dataset'], 'train', shape=[config['canvas_size'], config['canvas_size']],
+		                      file_path='./datasets', save_only=False)
 	else:
 		testset = get_dataset(config['dataset'], 'test', shape=[config['canvas_size'], config['canvas_size']],
 		                      file_path='./datasets', save_only=False)
