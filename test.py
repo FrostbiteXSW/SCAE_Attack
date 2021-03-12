@@ -79,9 +79,9 @@ if __name__ == '__main__':
 
 	if config['dataset'] == 'gtsrb':
 		trainset = get_gtsrb('train', shape=[config['canvas_size'], config['canvas_size']], file_path='./datasets',
-		                     save_only=False, gtsrb_raw_file_path='./datasets/GTSRB', gtsrb_classes=config['classes'])
+		                     save_only=False, gtsrb_raw_file_path=GTSRB_DATASET_PATH, gtsrb_classes=config['classes'])
 		testset = get_gtsrb('test', shape=[config['canvas_size'], config['canvas_size']], file_path='./datasets',
-		                    save_only=False, gtsrb_raw_file_path='./datasets/GTSRB', gtsrb_classes=config['classes'])
+		                    save_only=False, gtsrb_raw_file_path=GTSRB_DATASET_PATH, gtsrb_classes=config['classes'])
 	else:
 		trainset = get_dataset(config['dataset'], 'train', shape=[config['canvas_size'], config['canvas_size']],
 		                       file_path='./datasets', save_only=False)

@@ -189,6 +189,7 @@ config_fashion_mnist = {
 }
 
 GTSRB = 'gtsrb'
+GTSRB_DATASET_PATH = './datasets/GTSRB-for-SCAE_L2_Attack/GTSRB'
 config_gtsrb = {
 	'dataset': GTSRB,
 	'canvas_size': 40,
@@ -276,7 +277,7 @@ config_cifar10 = {
 if __name__ == '__main__':
 	block_warnings()
 
-	config = config_svhn
+	config = config_gtsrb
 	batch_size = 100
 	max_train_steps = 300
 	learning_rate = 3e-5
@@ -315,9 +316,9 @@ if __name__ == '__main__':
 
 	if config['dataset'] == GTSRB:
 		trainset = get_gtsrb('train', shape=[config['canvas_size'], config['canvas_size']], file_path='./datasets',
-		                     save_only=True, gtsrb_raw_file_path='./datasets/GTSRB', gtsrb_classes=config['classes'])
+		                     save_only=True, gtsrb_raw_file_path=GTSRB_DATASET_PATH, gtsrb_classes=config['classes'])
 		testset = get_gtsrb('test', shape=[config['canvas_size'], config['canvas_size']], file_path='./datasets',
-		                    save_only=True, gtsrb_raw_file_path='./datasets/GTSRB', gtsrb_classes=config['classes'])
+		                    save_only=True, gtsrb_raw_file_path=GTSRB_DATASET_PATH, gtsrb_classes=config['classes'])
 	else:
 		trainset = get_dataset(config['dataset'], 'train', shape=[config['canvas_size'], config['canvas_size']],
 		                       file_path='./datasets', save_only=True)
