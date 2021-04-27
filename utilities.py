@@ -17,27 +17,28 @@ from monty.collections import AttrDict
 from tqdm import trange
 
 
-def imshow(im: np.ndarray, file_path=None):
+def imshow(im: np.ndarray, canvas_size=4.8, file_path=None):
 	"""
 	Use matplotlib.pyplot to show images.
 	For 2-dim image data: [width, height].
 	For 3-dim image data: [width, height, channels].
 	For 4-dim image dataset: [n_images, width, height, channels].
 
-	:type file_path: str
-	:param file_path: Save the image with specific file name.
 	:type im: torch.Tensor
 	:param im: single image with 2 or 3 dims,
 						 or multiple images with 4 dims.
+	:type canvas_size: float
+	:param canvas_size: Canvas size (for both width and height) to output a 28*28 image.
+										Will auto scale for different image shapes.
+	:type file_path: str
+	:param file_path: Save the image with specific file name.
 	"""
-	if im.ndim == 2:
-		plt.imshow(im)
-		plt.show()
-	elif im.ndim == 3:
+	plt.axis('off')
+	plt.subplots_adjust(left=0, bottom=0, right=1, top=1, wspace=0, hspace=0)
+
+	if im.ndim == 3:
 		if im.shape[-1] == 1:
 			im = im.squeeze(axis=-1)
-		plt.imshow(im)
-		plt.show()
 	elif im.ndim == 4:
 		n_x = math.floor(pow(len(im), 0.5))
 		if math.ceil(len(im) / n_x) > n_x + 1:
@@ -51,16 +52,16 @@ def imshow(im: np.ndarray, file_path=None):
 			ims[im.shape[1] * x:im.shape[1] * (x + 1), im.shape[2] * y:im.shape[2] * (y + 1), :] = im[i]
 		if ims.shape[-1] == 1:
 			ims = ims.squeeze(axis=-1)
-		plt.imshow(ims)
-		plt.show()
-	else:
+		im = ims
+	elif im.ndim != 2:
 		raise TypeError('Expected image(s) to have 2, 3 or 4 dims, but got {}.'.format(im.ndim))
 
+	plt.gcf().set_size_inches(canvas_size / 28 * im.shape[1], canvas_size / 28 * im.shape[0])
+	plt.imshow(im)
+	plt.show()
+
 	if file_path:
-		if im.ndim == 4:
-			plt.imsave(file_path, ims, format='png')
-		else:
-			plt.imsave(file_path, im, format='png')
+		plt.imsave(file_path, im, format='png')
 		print('Image is saved to {}'.format(file_path))
 
 
