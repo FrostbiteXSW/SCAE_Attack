@@ -189,7 +189,7 @@ config_fashion_mnist = {
 }
 
 GTSRB = 'gtsrb'
-GTSRB_DATASET_PATH = './datasets/GTSRB-for-SCAE_Attack/GTSRB'
+GTSRB_DATASET_PATH = './datasets/GTSRB-for-SCAE_L2_Attack/GTSRB'
 config_gtsrb = {
 	'dataset': GTSRB,
 	'canvas_size': 40,
@@ -397,6 +397,6 @@ if __name__ == '__main__':
 
 		score = test_loss / len_testset
 		if score < best_score:
-			print('Saving model...({:.6f} < {:.6f})'.format(score, best_score))
+			print('Saving model...({:.6f} > {:.6f})'.format(score, best_score))
 			model.saver.save(model.sess, snapshot)
 			best_score = score
