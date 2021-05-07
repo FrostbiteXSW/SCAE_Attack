@@ -189,7 +189,7 @@ config_fashion_mnist = {
 }
 
 GTSRB = 'gtsrb'
-GTSRB_DATASET_PATH = './datasets/GTSRB-for-SCAE_L2_Attack/GTSRB'
+GTSRB_DATASET_PATH = './datasets/GTSRB-for-SCAE_Attack/GTSRB'
 config_gtsrb = {
 	'dataset': GTSRB,
 	'canvas_size': 40,
