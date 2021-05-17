@@ -344,7 +344,7 @@ if __name__ == '__main__':
 	test_acc_posterior = 0.
 	for i_batch in trange(test_batches, desc='Testing'):
 		i_end = min((i_batch + 1) * batch_size, len_testset)
-		i_start = min(i_batch * batch_size, i_end - batch_size)
+		i_start = i_end - batch_size
 		images = to_float32(testset['image'][i_start:i_end])
 		labels = testset['label'][i_start:i_end]
 		test_pred_prior, test_pred_posterior, _test_loss = model.sess.run(
@@ -368,7 +368,7 @@ if __name__ == '__main__':
 
 		for i_batch in trange(train_batches, desc='Training'):
 			i_end = min((i_batch + 1) * batch_size, len_trainset)
-			i_start = min(i_batch * batch_size, i_end - batch_size)
+			i_start = i_end - batch_size
 			indices = shuffle_indices[i_start:i_end]
 			images = to_float32(trainset['image'][indices])
 			labels = trainset['label'][indices]
@@ -379,7 +379,7 @@ if __name__ == '__main__':
 		test_acc_posterior = 0.
 		for i_batch in trange(test_batches, desc='Testing'):
 			i_end = min((i_batch + 1) * batch_size, len_testset)
-			i_start = min(i_batch * batch_size, i_end - batch_size)
+			i_start = i_end - batch_size
 			images = to_float32(testset['image'][i_start:i_end])
 			labels = testset['label'][i_start:i_end]
 			test_pred_prior, test_pred_posterior, _test_loss = model.sess.run(
