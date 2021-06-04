@@ -247,7 +247,6 @@ if __name__ == '__main__':
 		test_acc_prior / testset.dataset_size,
 		test_acc_posterior / testset.dataset_size
 	))
-	best_score = test_loss
 
 	# Train model
 	for epoch in range(max_train_steps):
@@ -279,7 +278,5 @@ if __name__ == '__main__':
 			test_acc_posterior / testset.dataset_size
 		))
 
-		if test_loss < best_score:
-			print('Saving model...({:.6f} < {:.6f})'.format(test_loss, best_score))
-			model.save_model(snapshot)
-			best_score = test_loss
+		print('Saving model...')
+		model.save_model(snapshot)
