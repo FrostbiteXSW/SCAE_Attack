@@ -359,7 +359,6 @@ if __name__ == '__main__':
 		test_acc_prior / len_testset,
 		test_acc_posterior / len_testset
 	))
-	best_score = test_loss / len_testset
 
 	for epoch in range(max_train_steps):
 		print('\n[Epoch {}/{}]'.format(epoch + 1, max_train_steps))
@@ -395,8 +394,5 @@ if __name__ == '__main__':
 			test_acc_posterior / len_testset
 		))
 
-		score = test_loss / len_testset
-		if score < best_score:
-			print('Saving model...({:.6f} > {:.6f})'.format(score, best_score))
-			model.saver.save(model.sess, snapshot)
-			best_score = score
+		print('Saving model...')
+		model.saver.save(model.sess, snapshot)
