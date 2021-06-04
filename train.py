@@ -224,29 +224,8 @@ if __name__ == '__main__':
 	if not os.path.exists(path):
 		os.makedirs(path)
 
-	# Get the best score of last snapshot
-	test_loss = 0.
-	test_acc_prior = 0.
-	test_acc_posterior = 0.
-	for images, labels in tqdm(testset, desc='Testing'):
-		test_pred_prior, test_pred_posterior, _test_loss = model.run(
-			images=images,
-			labels=labels,
-			to_collect=[model._res.prior_cls_pred,
-			            model._res.posterior_cls_pred,
-			            model._loss]
-		)
-		test_loss += _test_loss
-		test_acc_prior += (test_pred_prior == labels).sum()
-		test_acc_posterior += (test_pred_posterior == labels).sum()
-		assert not np.isnan(test_loss)
-	test_loss /= testset.dataset_size
-
-	print('loss: {:.6f}  prior acc: {:.6f}  posterior acc: {:.6f}'.format(
-		test_loss,
-		test_acc_prior / testset.dataset_size,
-		test_acc_posterior / testset.dataset_size
-	))
+	# Classification accuracy test
+	model.simple_test(testset)
 
 	# Train model
 	for epoch in range(max_train_steps):
