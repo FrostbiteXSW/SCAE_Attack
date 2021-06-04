@@ -95,6 +95,7 @@ class ImageAutoencoder(Model):
 			decoder,
 			input_key,
 			label_key=None,
+			target_key=None,  # EDITED
 			n_classes=None,
 			dynamic_l2_weight=0.,
 			caps_ll_weight=0.,
@@ -123,6 +124,7 @@ class ImageAutoencoder(Model):
 		self._decoder = decoder
 		self._input_key = input_key
 		self._label_key = label_key
+		self._target_key = target_key
 		self._n_classes = n_classes
 
 		self._dynamic_l2_weight = dynamic_l2_weight
@@ -183,20 +185,23 @@ class ImageAutoencoder(Model):
 		return sobel_img
 
 	def _img(self, data, prep='none'):
-
 		img = data[self._input_key]
 		if prep == 'sobel':
 			img = ImageAutoencoder.normalized_sobel_edges(img)
-
 		return img
 
 	def _label(self, data):
 		return data.get(self._label_key, None)
 
-	def _build(self, data):
+	# EDITED
+	def _target(self, data):
+		return data.get(self._target_key, self._img(data, prep=self._prep))
 
-		input_x = self._img(data, False)
-		target_x = self._img(data, prep=self._prep)
+	def _build(self, data):
+		# EDITED
+		input_x = self._img(data)
+		target_x = self._target(data)
+
 		batch_size = int(input_x.shape[0])
 
 		primary_caps = self._primary_encoder(input_x)
