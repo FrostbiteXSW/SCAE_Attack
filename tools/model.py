@@ -302,6 +302,9 @@ class ScaeBasement(_ModelCollector):
 		})
 
 	def __call__(self, images):
+		if self._is_training:
+			raise NotImplementedError('Model is in training mode. Use run() instead.')
+
 		return self._sess.run(self._res.prior_cls_logits, feed_dict={self._input: images})
 
 	def finalize(self):
@@ -314,10 +317,15 @@ class ScaeBasement(_ModelCollector):
 		test_acc_posterior = 0.
 
 		for images, labels in tqdm(dataset, desc='Testing'):
+			if self._is_training:
+				feed_dict = {self._input: images, self._label: labels}
+			else:
+				feed_dict = {self._input: images}
+
 			test_pred_prior, test_pred_posterior = self._sess.run(
 				[self._res.prior_cls_pred,
 				 self._res.posterior_cls_pred],
-				feed_dict={self._input: images})
+				feed_dict=feed_dict)
 			test_acc_prior += (test_pred_prior == labels).sum()
 			test_acc_posterior += (test_pred_posterior == labels).sum()
 
@@ -329,6 +337,9 @@ class ScaeBasement(_ModelCollector):
 		return self._saver.save(self._sess, save_path=path)
 
 	def train_step(self, images, labels):
+		if not self._is_training:
+			raise NotImplementedError('Model is not in training mode.')
+
 		return self._sess.run(self._train_step, feed_dict={
 			self._input: images,
 			self._label: labels
