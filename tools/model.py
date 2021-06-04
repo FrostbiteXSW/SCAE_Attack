@@ -297,6 +297,9 @@ class ScaeBasement(_ModelCollector):
 				self._label: labels
 			})
 
+		if self._is_training:
+			raise NotImplementedError('Model is in training mode. Labels must be provided.')
+
 		return self._sess.run(to_collect, feed_dict={
 			self._input: images
 		})
