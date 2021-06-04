@@ -291,24 +291,28 @@ class ScaeBasement(_ModelCollector):
 				self._sess.run(tf.initialize_variables(var_list=tf.trainable_variables(scope=scope)))
 
 	def run(self, images, to_collect, labels=None):
-		if labels is not None:
+		try:
+			if labels is not None:
+				return self._sess.run(to_collect, feed_dict={
+					self._input: images,
+					self._label: labels
+				})
+
 			return self._sess.run(to_collect, feed_dict={
-				self._input: images,
-				self._label: labels
+				self._input: images
 			})
+		except tf.errors.InvalidArgumentError:
+			pass
 
-		if self._is_training:
-			raise NotImplementedError('Model is in training mode. Labels must be provided.')
-
-		return self._sess.run(to_collect, feed_dict={
-			self._input: images
-		})
+		raise NotImplementedError('Model is in training mode. Labels must be provided.')
 
 	def __call__(self, images):
-		if self._is_training:
-			raise NotImplementedError('Model is in training mode. Use run() instead.')
+		try:
+			return self._sess.run(self._res.prior_cls_logits, feed_dict={self._input: images})
+		except tf.errors.InvalidArgumentError:
+			pass
 
-		return self._sess.run(self._res.prior_cls_logits, feed_dict={self._input: images})
+		raise NotImplementedError('Model is in training mode. Use run() instead.')
 
 	def finalize(self):
 		self._sess.graph.finalize()
