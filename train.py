@@ -278,5 +278,4 @@ if __name__ == '__main__':
 			test_acc_posterior / testset.dataset_size
 		))
 
-		print('Saving model...')
 		model.save_model(snapshot)
