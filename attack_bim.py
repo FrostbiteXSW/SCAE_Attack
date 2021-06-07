@@ -22,6 +22,7 @@ class AttackerBIM(Attacker):
 
 		self._sess = scae._sess
 		self._input_size = scae._input_size
+		self._valid_shape = scae._valid_shape
 
 		if 'K' in classifier:
 			if kmeans_classifier is None:
@@ -110,15 +111,16 @@ class AttackerBIM(Attacker):
 			@return Images as numpy array with the same as inputs.
 		"""
 
-		# Buffer to store temporary results during iteration
-		batch_size = self._input_size[0]
+		# Shape Validation
+		images, num_images, labels = self._valid_shape(images, labels)
 
 		# Calculate mask
 		mask = imblur(images, **mask_kwargs) if use_mask else np.ones_like(images)
 
 		# The best pert amount and pert image
-		global_best_p_loss = np.full([batch_size], np.inf)
-		global_best_pert_images = np.full(self._input_size, np.nan) if nan_if_fail else images.copy()
+		global_best_p_loss = np.full([num_images], np.inf)
+		global_best_pert_images = np.full([num_images, *self._input_size[1:]], np.nan) \
+			if nan_if_fail else images[:num_images].copy()
 
 		# Init the original images and masks
 		self._sess.run(self._init, feed_dict={self._ph_input: images,
@@ -136,7 +138,7 @@ class AttackerBIM(Attacker):
 
 			# Update global best result
 			pert_images = self._sess.run(self._pert_images)
-			for i in range(batch_size):
+			for i in range(num_images):
 				if succeed[i] and p_loss[i] < global_best_p_loss[i]:
 					global_best_pert_images[i] = pert_images[i]
 					global_best_p_loss[i] = p_loss[i]

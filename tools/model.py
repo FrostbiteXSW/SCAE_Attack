@@ -303,10 +303,13 @@ class ScaeBasement(_ModelCollector):
 			new_images[:num_images] = images
 			images = new_images
 
-		if labels:
-			if len(labels.shape) == 3:
-				labels = labels[None]
-			elif len(labels.shape) != 4:
+		if labels is not None:
+			if len(labels.shape) == 1:
+				if labels.shape[0] != self._input_size[0]:
+					new_labels = np.zeros([self._input_size[0]])
+					new_labels[:num_images] = labels
+					labels = new_labels
+			else:
 				raise ValueError('Input shape \'{}\' is invalid'.format(labels.shape))
 			return images, num_images, labels
 		else:
@@ -598,5 +601,5 @@ class Attacker(metaclass=abc.ABCMeta):
 		PosL = 'PosL'
 
 	@abc.abstractmethod
-	def __call__(self, **kwargs):
+	def __call__(self, *args, **kwargs):
 		pass

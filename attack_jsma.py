@@ -22,6 +22,7 @@ class AttackerJSMA(Attacker):
 
 		self._sess = scae._sess
 		self._input_size = scae._input_size
+		self._valid_shape = scae._valid_shape
 
 		if 'K' in classifier:
 			if kmeans_classifier is None:
@@ -147,15 +148,16 @@ class AttackerJSMA(Attacker):
 			@return Images as numpy array with the same as inputs.
 		"""
 
-		# Buffer to store temporary results during iteration
-		batch_size = self._input_size[0]
+		# Shape Validation
+		images, num_images, labels = self._valid_shape(images, labels)
 
 		# Calculate mask
 		mask = imblur(images, **mask_kwargs) if use_mask else np.ones_like(images)
 
 		# The best pert amount and pert image
-		global_success = np.full([batch_size], 0, np.bool)
-		global_best_pert_images = np.full(self._input_size, np.nan) if nan_if_fail else images.copy()
+		global_success = np.full([num_images], 0, np.bool)
+		global_best_pert_images = np.full([num_images, *self._input_size[1:]], np.nan) \
+			if nan_if_fail else images[:num_images].copy()
 
 		# Init the original images and masks
 		self._sess.run(self._init, feed_dict={self._ph_input: images,
@@ -172,13 +174,14 @@ class AttackerJSMA(Attacker):
 				results = self._kmeans_classifier.run(results, self._kmeans_classifier._output)
 			succeed = results != labels
 
-			for i in range(batch_size):
+			for i in range(num_images):
 				# Update global best result
 				if succeed[i] and not global_success[i]:
 					global_best_pert_images[i] = pert_images[i]
 					global_success[i] = True
 
-			if True not in (pert_images != 0) or False not in global_success:
+			# Exit when all pixels are subtracted to zero, or all images are perturbed successfully
+			if True not in (pert_images[:num_images] != 0) or False not in global_success:
 				if verbose:
 					dynamic_range.close()
 				break

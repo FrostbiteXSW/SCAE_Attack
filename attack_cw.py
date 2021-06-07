@@ -37,6 +37,7 @@ class AttackerCW(Attacker):
 
 		self._sess = scae._sess
 		self._input_size = scae._input_size
+		self._valid_shape = scae._valid_shape
 
 		if 'K' in classifier:
 			if kmeans_classifier is None:
@@ -134,20 +135,21 @@ class AttackerCW(Attacker):
 			@return Images as numpy array with the same as inputs.
 		"""
 
-		# Buffer to store temporary results during iteration
-		batch_size = self._input_size[0]
+		# Shape Validation
+		images, num_images, labels = self._valid_shape(images, labels)
 
 		# Calculate mask
 		mask = imblur(images, **mask_kwargs) if use_mask else np.ones_like(images)
 
 		# Set constant
-		lower_bound = np.zeros([batch_size])
-		upper_bound = np.full([batch_size], np.inf)
-		const = np.full([batch_size], const_init)
+		lower_bound = np.zeros([num_images])
+		upper_bound = np.full([num_images], np.inf)
+		const = np.full([self._input_size[0]], const_init)
 
 		# The best pert amount and pert image
-		global_best_p_loss = np.full([batch_size], np.inf)
-		global_best_pert_images = np.full(self._input_size, np.nan) if nan_if_fail else images.copy()
+		global_best_p_loss = np.full([num_images], np.inf)
+		global_best_pert_images = np.full([num_images, *self._input_size[1:]], np.nan) \
+			if nan_if_fail else images[:num_images].copy()
 
 		# Outer iteration
 		for _ in (trange(self._outer_iteration) if verbose else range(self._outer_iteration)):
@@ -157,7 +159,7 @@ class AttackerCW(Attacker):
 			                                      self._ph_const: const})
 
 			# Flag for constant update
-			flag_hit_succeed = np.zeros([batch_size])
+			flag_hit_succeed = np.zeros([num_images])
 
 			# Inner iteration
 			for inner_iter in range(self._inner_iteration):
@@ -178,19 +180,19 @@ class AttackerCW(Attacker):
 				succeed = results != labels
 
 				# Update flag
-				flag_hit_succeed += succeed
+				flag_hit_succeed += succeed[:num_images]
 
 				# Update global best result
 				pert_images = self._sess.run(self._pert_images)
-				for i in range(batch_size):
+				for i in range(num_images):
 					if succeed[i] and p_loss[i] < global_best_p_loss[i]:
 						global_best_pert_images[i] = pert_images[i]
 						global_best_p_loss[i] = p_loss[i]
 
 			# Update constant
-			upper_bound = np.where(flag_hit_succeed, const, upper_bound)
-			lower_bound = np.where(flag_hit_succeed, lower_bound, const)
-			const = np.where(np.isinf(upper_bound), const * 10, (lower_bound + upper_bound) / 2)
+			upper_bound = np.where(flag_hit_succeed, const[:num_images], upper_bound)
+			lower_bound = np.where(flag_hit_succeed, lower_bound, const[:num_images])
+			const[:num_images] = np.where(np.isinf(upper_bound), const[:num_images] * 10, (lower_bound + upper_bound) / 2)
 
 		return global_best_pert_images
 
