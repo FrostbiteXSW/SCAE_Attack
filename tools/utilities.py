@@ -486,15 +486,15 @@ class DatasetHelper:
 
 	def __getitem__(self, item):
 		if type(item) in [int, slice, list, tuple]:
-			images = self._images[item]
+			images = self._images[item].copy()
 			for tran in self._trans:
 				images = tran(images)
-			return images, self._labels[item]
+			return images, self._labels[item].copy()
 		elif type(item) == str:
 			if item == 'images':
-				return self._images
+				return self._images.copy()
 			elif item == 'labels':
-				return self._labels
+				return self._labels.copy()
 
 		raise TypeError('Unsupported operation.')
 

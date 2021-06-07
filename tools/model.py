@@ -290,29 +290,56 @@ class ScaeBasement(_ModelCollector):
 			else:
 				self._sess.run(tf.initialize_variables(var_list=tf.trainable_variables(scope=scope)))
 
-	def run(self, images, to_collect, labels=None):
-		try:
-			if labels is not None:
-				return self._sess.run(to_collect, feed_dict={
-					self._input: images,
-					self._label: labels
-				})
+	def _valid_shape(self, images, labels=None):
+		if len(images.shape) == 3:
+			images = images[None]
+		elif len(images.shape) != 4:
+			raise ValueError('Input shape \'{}\' is invalid'.format(images.shape))
 
-			return self._sess.run(to_collect, feed_dict={
-				self._input: images
-			})
-		except tf.errors.InvalidArgumentError:
-			pass
+		num_images = images.shape[0]
 
-		raise NotImplementedError('Model is in training mode. Labels must be provided.')
+		if num_images != self._input_size[0]:
+			new_images = np.zeros(self._input_size)
+			new_images[:num_images] = images
+			images = new_images
+
+		if labels:
+			if len(labels.shape) == 3:
+				labels = labels[None]
+			elif len(labels.shape) != 4:
+				raise ValueError('Input shape \'{}\' is invalid'.format(labels.shape))
+			return images, num_images, labels
+		else:
+			return images, num_images
 
 	def __call__(self, images):
+		images, num_images = self._valid_shape(images)
+
 		try:
-			return self._sess.run(self._res.prior_cls_logits, feed_dict={self._input: images})
+			return self._sess.run(self._res.prior_cls_logits, feed_dict={self._input: images})[:num_images]
 		except tf.errors.InvalidArgumentError:
 			pass
 
 		raise NotImplementedError('Model is in training mode. Use run() instead.')
+
+	def run(self, images, to_collect, labels=None):
+		try:
+			if labels is not None:
+				images, num_images, labels = self._valid_shape(images, labels)
+				return self._sess.run(to_collect, feed_dict={
+					self._input: images,
+					self._label: labels
+				})[:num_images]
+
+			images, num_images = self._valid_shape(images)
+			return self._sess.run(to_collect, feed_dict={
+				self._input: images
+			})[:num_images]
+
+		except tf.errors.InvalidArgumentError:
+			pass
+
+		raise NotImplementedError('Model is in training mode. Labels must be provided.')
 
 	def finalize(self):
 		self._sess.graph.finalize()
@@ -449,6 +476,7 @@ class KMeans(_ModelCollector):
 		self._sess = scae._sess
 		self._input_size = scae._input_size
 		self._is_training = is_training
+		self._valid_shape = scae._valid_shape
 
 		with self._sess.graph.as_default():
 			with tf.variable_scope(scope, 'KMeans'):
@@ -495,12 +523,7 @@ class KMeans(_ModelCollector):
 				self._sess.run(tf.initialize_variables(var_list=tf.trainable_variables(scope=scope)))
 
 	def __call__(self, images):
-		num_images = images.shape[0]
-
-		if num_images != self._input_size[0]:
-			new_images = np.zeros(self._input_size)
-			new_images[:num_images] = images
-			images = new_images
+		images, num_images = self._valid_shape(images)
 
 		res = self._sess.run(self._output_scae, feed_dict={self._input_scae: images})[:num_images]
 		res = self._sess.run(self._output, feed_dict={self._input: res})
