@@ -257,10 +257,10 @@ if __name__ == '__main__':
 	# Save the final result of complete attack
 	succeed_pert_amount = np.array(succeed_pert_amount, dtype=np.float32)
 	succeed_pert_robustness = np.array(succeed_pert_robustness, dtype=np.float32)
-	result = 'Dataset: {}\nClassifier: {}\nNum of samples: {}\nSuccess rate: {:.4f}\nAverage pert amount: {:.4f}\n' \
-	         'Pert amount standard deviation: {:.4f}\nPert robustness: {:.4f}\n' \
+	result = 'Dataset: {}\nClassifier: {}\nNum of iter: {}\nAlpha: {}\nNum of samples: {}\nSuccess rate: {:.4f}\n' \
+	         'Average pert amount: {:.4f}\nPert amount standard deviation: {:.4f}\nPert robustness: {:.4f}\n' \
 	         'Pert robustness standard deviation: {:.4f}\n'.format(
-		config['dataset'], classifier, num_samples, succeed_count / num_samples, succeed_pert_amount.mean(),
+		config['dataset'], classifier, num_iter, alpha, num_samples, succeed_count / num_samples, succeed_pert_amount.mean(),
 		succeed_pert_amount.std(), succeed_pert_robustness.mean(), succeed_pert_robustness.std())
 	print(result)
 	if os.path.exists(path + 'result.txt'):

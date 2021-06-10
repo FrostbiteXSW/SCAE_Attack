@@ -18,6 +18,8 @@ class AttackerCW(Attacker):
 		Adam_fast = [9, 300, 1, 'Adam']
 		Adam_normal = [9, 1000, 1e-1, 'Adam']
 		Adam_complex = [9, 2000, 1e-2, 'Adam']
+		FGSM_fast = [3, 10, 2.5, 'FGSM']
+		FGSM_normal = [5, 30, 1, 'FGSM']
 
 	def __init__(
 			self,
@@ -79,25 +81,32 @@ class AttackerCW(Attacker):
 			self._p_loss = tf.reduce_sum(0.5 * tf.square(self._pert_images - self._input), axis=[1, 2, 3])
 			loss = self._c_loss + tf.reduce_sum(self._p_loss)
 
-			optimizer = optimizer.upper()
-			if optimizer == 'RMSPROP':
-				optimizer = tf.train.RMSPropOptimizer(learning_rate=learning_rate, momentum=.9, epsilon=1e-6)
-			elif optimizer == 'ADAM':
-				optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate)
-			else:
-				raise NotImplementedError('Unsupported optimizer.')
-			self._train_step = optimizer.minimize(loss, var_list=[self._pert_atanh])
-			rst_opt = tf.initialize_variables(var_list=optimizer.variables())
-
 			# Initialization operation
 			self._init = [
 				tf.assign(self._pert_atanh, tf.random.uniform(self._input_size)),
 				tf.assign(self._input, self._ph_input),
 				tf.assign(self._mask, self._ph_mask),
-				tf.assign(self._const, self._ph_const),
-				rst_opt
+				tf.assign(self._const, self._ph_const)
 			]
 
+			# Init optimizer
+			optimizer = optimizer.upper()
+			if optimizer == 'RMSPROP':
+				optimizer = tf.train.RMSPropOptimizer(learning_rate=learning_rate, momentum=.9, epsilon=1e-6)
+				self._train_step = optimizer.minimize(loss, var_list=[self._pert_atanh])
+				self._init.append(tf.initialize_variables(var_list=optimizer.variables()))
+			elif optimizer == 'ADAM':
+				optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate)
+				self._train_step = optimizer.minimize(loss, var_list=[self._pert_atanh])
+				self._init.append(tf.initialize_variables(var_list=optimizer.variables()))
+			elif optimizer == 'FGSM':
+				self._train_step = tf.assign(self._pert_atanh,
+				                             self._pert_atanh - learning_rate * tf.sign(
+					                             tf.gradients(loss, self._pert_atanh)[0]))
+			else:
+				raise NotImplementedError('Unsupported optimizer.')
+
+			# Compute capsule subset position
 			if classifier[:3].upper() == 'PRI':
 				pres_clean = scae._res.caps_presence_prob
 			else:
@@ -307,11 +316,12 @@ if __name__ == '__main__':
 	# Save the final result of complete attack
 	succeed_pert_amount = np.array(succeed_pert_amount, dtype=np.float32)
 	succeed_pert_robustness = np.array(succeed_pert_robustness, dtype=np.float32)
-	result = 'Dataset: {}\nClassifier: {}\nNum of samples: {}\nSuccess rate: {:.4f}\nAverage pert amount: {:.4f}\n' \
-	         'Pert amount standard deviation: {:.4f}\nPert robustness: {:.4f}\n' \
+	result = 'Dataset: {}\nClassifier: {}\nOptimizer config: {}\nNum of samples: {}\nSuccess rate: {:.4f}\n' \
+	         'Average pert amount: {:.4f}\nPert amount standard deviation: {:.4f}\nPert robustness: {:.4f}\n' \
 	         'Pert robustness standard deviation: {:.4f}\n'.format(
-		config['dataset'], classifier, num_samples, succeed_count / num_samples, succeed_pert_amount.mean(),
-		succeed_pert_amount.std(), succeed_pert_robustness.mean(), succeed_pert_robustness.std())
+		config['dataset'], classifier, optimizer_config, num_samples, succeed_count / num_samples,
+		succeed_pert_amount.mean(), succeed_pert_amount.std(), succeed_pert_robustness.mean(),
+		succeed_pert_robustness.std())
 	print(result)
 	if os.path.exists(path + 'result.txt'):
 		os.remove(path + 'result.txt')
