@@ -213,7 +213,7 @@ class ScaeBasement(_ModelCollector):
 		self._set_transformer_n_layers = set_transformer_n_layers
 		self._set_transformer_n_heads = set_transformer_n_heads
 		self._set_transformer_n_dims = set_transformer_n_dims
-		self._set_transformer_n_output_dims = set_transformer_n_output_dims,
+		self._set_transformer_n_output_dims = set_transformer_n_output_dims
 		self._part_cnn_strides = part_cnn_strides
 		self._prep = prep
 		self._is_training = is_training
