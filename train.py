@@ -13,6 +13,7 @@ def build_from_config(
 		is_training=False,
 		learning_rate=1e-4,
 		use_lr_schedule=True,
+		scope='SCAE',
 		snapshot=None
 ):
 	return ScaeBasement(
@@ -40,7 +41,7 @@ def build_from_config(
 		prep=config['prep'],
 		is_training=is_training,
 		learning_rate=learning_rate,
-		scope='SCAE',
+		scope=scope,
 		use_lr_schedule=use_lr_schedule,
 		snapshot=snapshot
 	)

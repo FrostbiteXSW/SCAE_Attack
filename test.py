@@ -10,6 +10,7 @@ from train import Configs, build_from_config
 def test(
 		config,
 		batch_size=100,
+		scope='SCAE',
 		snapshot=None,
 		snapshot_kmeans_pri=None,
 		snapshot_kmeans_pos=None,
@@ -24,6 +25,7 @@ def test(
 		config=config,
 		batch_size=batch_size,
 		is_training=False,
+		scope=scope,
 		snapshot=snapshot
 	)
 
