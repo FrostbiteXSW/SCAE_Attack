@@ -6,7 +6,7 @@ import tensorflow as tf
 from tqdm import trange
 
 from tools.model import Attacker, ScaeBasement, KMeans
-from tools.utilities import block_warnings, imblur, DatasetHelper
+from tools.utilities import block_warnings, imblur, DatasetHelper, ResultBuilder
 from train import Configs, build_from_config
 
 
@@ -301,32 +301,28 @@ if __name__ == '__main__':
 		print('Up to now: Success rate: {:.4f}. Average pert amount: {:.4f}. Remain: {}.'.format(
 			succeed_count / (num_samples - remain), np.array(succeed_pert_amount, dtype=np.float32).mean(), remain))
 
-	# Create result directory
-	now = time.localtime()
-	path = './results/cw/{}_{}_{}_{}_{}/'.format(
-		now.tm_year,
-		now.tm_mon,
-		now.tm_mday,
-		now.tm_hour,
-		now.tm_min
-	)
-	if not os.path.exists(path):
-		os.makedirs(path)
-
-	# Save the final result of complete attack
+	# Change list into numpy array
 	succeed_pert_amount = np.array(succeed_pert_amount, dtype=np.float32)
 	succeed_pert_robustness = np.array(succeed_pert_robustness, dtype=np.float32)
-	result = 'Dataset: {}\nClassifier: {}\nOptimizer config: {}\nNum of samples: {}\nSuccess rate: {:.4f}\n' \
-	         'Average pert amount: {:.4f}\nPert amount standard deviation: {:.4f}\nPert robustness: {:.4f}\n' \
-	         'Pert robustness standard deviation: {:.4f}\n'.format(
-		config['dataset'], classifier, optimizer_config, num_samples, succeed_count / num_samples,
-		succeed_pert_amount.mean(), succeed_pert_amount.std(), succeed_pert_robustness.mean(),
-		succeed_pert_robustness.std())
+
+	# Save the final result of complete attack
+	result = ResultBuilder()
+	result['Dataset'] = config['dataset']
+	result['Classifier'] = classifier
+	result['Num of samples'] = num_samples
+
+	# Attacker params
+	result['Optimizer config'] = optimizer_config
+
+	# Attack results
+	result['Success rate'] = succeed_count / num_samples
+	result['Average pert amount'] = succeed_pert_amount.mean()
+	result['Pert amount standard deviation'] = succeed_pert_amount.std()
+	result['Average pert robustness'] = succeed_pert_robustness.mean()
+	result['Pert robustness standard deviation'] = succeed_pert_robustness.std()
+
+	# Print and save results
 	print(result)
-	if os.path.exists(path + 'result.txt'):
-		os.remove(path + 'result.txt')
-	result_file = open(path + 'result.txt', mode='x')
-	result_file.write(result)
-	result_file.close()
+	path = result.save('./results/bim/')
 	np.savez_compressed(path + 'source_images.npz', source_images=np.array(source_images, dtype=np.float32))
 	np.savez_compressed(path + 'pert_images.npz', pert_images=np.array(pert_images, dtype=np.float32))

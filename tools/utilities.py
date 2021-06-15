@@ -629,3 +629,42 @@ class DatasetHelper:
 		labels = np.concatenate(labels)
 
 		return images, labels
+
+
+class ResultBuilder(dict):
+	def __str__(self):
+		result = ''
+
+		for k, v in self.items():
+			vtype = type(v)
+			if vtype is float or vtype is np.float_:
+				format_str = '{}: {:.4f}\n'
+			else:
+				format_str = '{}: {}\n'
+			result += format_str.format(k, v)
+
+		return result
+
+	def save(self, result_path, plus_time=True):
+		if plus_time:
+			now = time.localtime()
+			result_path = result_path + '/{}_{}_{}_{}_{}/'.format(
+				now.tm_year,
+				now.tm_mon,
+				now.tm_mday,
+				now.tm_hour,
+				now.tm_min
+			)
+
+		file_path = result_path + '/result.txt'
+
+		if not os.path.exists(result_path):
+			os.makedirs(result_path)
+		elif os.path.exists(file_path):
+			os.remove(file_path)
+
+		print('Saving result into {}'.format(file_path))
+		result_file = open(file_path, mode='x')
+		result_file.write(str(self))
+		result_file.close()
+		return result_path
