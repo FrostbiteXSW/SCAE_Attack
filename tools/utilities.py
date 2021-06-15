@@ -636,8 +636,7 @@ class ResultBuilder(dict):
 		result = ''
 
 		for k, v in self.items():
-			vtype = type(v)
-			if vtype is float or vtype is np.float_:
+			if isinstance(v, (float, np.floating)):
 				format_str = '{}: {:.4f}\n'
 			else:
 				format_str = '{}: {}\n'
