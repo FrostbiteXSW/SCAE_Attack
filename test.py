@@ -14,6 +14,7 @@ def test(
 		snapshot=None,
 		snapshot_kmeans_pri=None,
 		snapshot_kmeans_pos=None,
+		dataset_path='./datasets',
 		train_and_save_kmeans=True
 ):
 	"""
@@ -48,11 +49,11 @@ def test(
 	model.finalize()
 
 	trainset = DatasetHelper(config['dataset'], 'train',
-	                         file_path='./datasets', batch_size=batch_size, fill_batch=True,
+	                         file_path=dataset_path, batch_size=batch_size, fill_batch=True,
 	                         normalize=True if config['dataset'] == Configs.GTSRB else False,
 	                         gtsrb_raw_file_path=Configs.GTSRB_DATASET_PATH, gtsrb_classes=Configs.GTSRB_CLASSES)
 	testset = DatasetHelper(config['dataset'], 'test',
-	                        file_path='./datasets', batch_size=batch_size, fill_batch=True,
+	                        file_path=dataset_path, batch_size=batch_size, fill_batch=True,
 	                        normalize=True if config['dataset'] == Configs.GTSRB else False,
 	                        gtsrb_raw_file_path=Configs.GTSRB_DATASET_PATH, gtsrb_classes=Configs.GTSRB_CLASSES)
 
