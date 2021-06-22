@@ -601,5 +601,25 @@ class Attacker(metaclass=abc.ABCMeta):
 		PosL = 'PosL'
 
 	@abc.abstractmethod
-	def __call__(self, *args, **kwargs):
+	def __call__(
+			self,
+			images: np.ndarray,
+			labels: np.ndarray,
+			nan_if_fail: bool,
+			verbose: bool,
+			use_mask: bool,
+			**mask_kwargs
+	):
+		"""
+			Return perturbed images of specified samples.
+
+			:param images: Images to be attacked.
+			:param labels: Labels corresponding to the images.
+			:param nan_if_fail: If true, failed results will be set to np.nan, otherwise the original images.
+			:param verbose: If true, a tqdm bar will be displayed.
+			:param use_mask: If true, mask will applied to the perturbation.
+			:param mask_kwargs: Arguments for generating the masks.
+
+			:return Images as numpy array with the same shape as inputs.
+		"""
 		pass

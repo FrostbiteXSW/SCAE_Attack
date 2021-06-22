@@ -16,9 +16,11 @@ class AttackerJSMA(Attacker):
 			scae: ScaeBasement,
 			classifier: str,
 			kmeans_classifier: KMeans = None,
-			alpha: float = 0.5
+			alpha: float = 0.5,
+			num_iter: int = 200
 	):
 		self._classifier = classifier
+		self._num_iter = num_iter
 
 		self._sess = scae._sess
 		self._input_size = scae._input_size
@@ -129,25 +131,11 @@ class AttackerJSMA(Attacker):
 			self,
 			images: np.ndarray,
 			labels: np.ndarray,
-			num_iter: int = 200,
 			nan_if_fail: bool = False,
 			verbose: bool = False,
 			use_mask: bool = True,
 			**mask_kwargs
 	):
-		"""
-			Return perturbed images of specified samples.
-
-			@param images: Images to be attacked.
-			@param labels: Labels corresponding to the images.
-			@param mask_blur_times: Indicates how many times to blur the images when computing masks.
-			@param const_init: Initial value of the constant.
-			@param nan_if_fail: If true, failed results will be set to np.nan, otherwise the original images.
-			@param verbose: If true, a tqdm bar will be displayed.
-
-			@return Images as numpy array with the same as inputs.
-		"""
-
 		# Shape Validation
 		images, num_images, labels = self._valid_shape(images, labels)
 
@@ -164,7 +152,7 @@ class AttackerJSMA(Attacker):
 		                                      self._ph_mask: mask})
 
 		# Iteration
-		dynamic_range = trange(num_iter) if verbose else range(num_iter)
+		dynamic_range = trange(self._num_iter) if verbose else range(self._num_iter)
 		for _ in dynamic_range:
 			self._sess.run(self._train_step)
 
@@ -226,7 +214,8 @@ if __name__ == '__main__':
 		scae=model,
 		classifier=classifier,
 		kmeans_classifier=kmeans if classifier[-1].upper() == 'K' else None,
-		alpha=alpha
+		alpha=alpha,
+		num_iter=num_iter
 	)
 
 	model.finalize()
@@ -265,7 +254,7 @@ if __name__ == '__main__':
 				else model._res.posterior_cls_pred
 			) == labels
 
-		attacker_outputs = attacker(images, labels, num_iter=num_iter, nan_if_fail=True, verbose=True)
+		attacker_outputs = attacker(images, labels, nan_if_fail=True, verbose=True)
 
 		for i in range(len(attacker_outputs)):
 			if right_classification[i] and remain:

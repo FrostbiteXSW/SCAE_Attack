@@ -26,8 +26,11 @@ class AttackerCW(Attacker):
 			scae: ScaeBasement,
 			optimizer_config: list,
 			classifier: str,
-			kmeans_classifier: KMeans = None
+			kmeans_classifier: KMeans = None,
+			const_init: float = 1e2
 	):
+		self._const_init = const_init
+
 		outer_iteration, inner_iteration, learning_rate, optimizer = optimizer_config
 
 		if optimizer not in ['RMSProp', 'Adam', 'FGSM']:
@@ -125,25 +128,11 @@ class AttackerCW(Attacker):
 			self,
 			images: np.ndarray,
 			labels: np.ndarray,
-			const_init: float = 1e2,
 			nan_if_fail: bool = False,
 			verbose: bool = False,
 			use_mask: bool = True,
 			**mask_kwargs
 	):
-		"""
-			Return perturbed images of specified samples.
-
-			@param images: Images to be attacked.
-			@param labels: Labels corresponding to the images.
-			@param mask_blur_times: Indicates how many times to blur the images when computing masks.
-			@param const_init: Initial value of the constant.
-			@param nan_if_fail: If true, failed results will be set to np.nan, otherwise the original images.
-			@param verbose: If true, a tqdm bar will be displayed.
-
-			@return Images as numpy array with the same as inputs.
-		"""
-
 		# Shape Validation
 		images, num_images, labels = self._valid_shape(images, labels)
 
@@ -153,7 +142,7 @@ class AttackerCW(Attacker):
 		# Set constant
 		lower_bound = np.zeros([num_images])
 		upper_bound = np.full([num_images], np.inf)
-		const = np.full([self._input_size[0]], const_init)
+		const = np.full([self._input_size[0]], self._const_init)
 
 		# The best pert amount and pert image
 		global_best_p_loss = np.full([num_images], np.inf)
