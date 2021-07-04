@@ -194,9 +194,9 @@ class Configs:
 if __name__ == '__main__':
 	block_warnings()
 
-	config = Configs.config_mnist
+	config = Configs.config_gtsrb
 	batch_size = 100
-	max_train_steps = 300
+	max_train_steps = 6000
 	learning_rate = 3e-5
 	snapshot = './checkpoints/{}/model.ckpt'.format(config['dataset'])
 

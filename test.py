@@ -114,7 +114,7 @@ def test(
 
 
 if __name__ == '__main__':
-	config = Configs.config_mnist
+	config = Configs.config_gtsrb
 	snapshot = './checkpoints/{}/model.ckpt'.format(config['dataset'])
 	snapshot_kmeans_pri = './checkpoints/{}/kmeans_pri/model.ckpt'.format(config['dataset'])
 	snapshot_kmeans_pos = './checkpoints/{}/kmeans_pos/model.ckpt'.format(config['dataset'])
