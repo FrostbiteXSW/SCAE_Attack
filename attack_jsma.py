@@ -166,7 +166,7 @@ class SCAE_JSMA_Attack(ModelCollector):
 			p2l: np.ndarray = None
 	):
 		pert_image = image.copy()
-		domain = np.ones_like(image).astype(np.bool)
+		domain = ((image > 0) * mask).astype(np.bool)
 
 		best_pert_image = None
 		best_result = None
