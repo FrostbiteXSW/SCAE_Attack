@@ -126,6 +126,7 @@ def _stacked_capsule_autoencoder(
 			decoder=obj_decoder,
 			input_key='image',
 			label_key='label',
+			target_key='target',
 			n_classes=num_classes,
 			dynamic_l2_weight=10,
 			caps_ll_weight=1.,
