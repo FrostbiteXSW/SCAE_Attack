@@ -1,6 +1,8 @@
 import os
 
 import numpy as np
+import tensorflow_datasets as tfds
+from monty.collections import AttrDict
 from tqdm import tqdm
 
 from tools.model import ScaeBasement
@@ -49,7 +51,8 @@ def build_from_config(
 
 class Configs:
 	MNIST = 'mnist'
-	config_mnist = {
+	config_mnist = AttrDict({
+		'name': MNIST,
 		'dataset': MNIST,
 		'canvas_size': 40,
 		'n_part_caps': 24,
@@ -74,10 +77,11 @@ class Configs:
 		'set_transformer_n_output_dims': 256,
 		'part_cnn_strides': [2, 2, 1, 1],
 		'prep': 'none'
-	}
+	})
 
 	FASHION_MNIST = 'fashion_mnist'
-	config_fashion_mnist = {
+	config_fashion_mnist = AttrDict({
+		'name': FASHION_MNIST,
 		'dataset': FASHION_MNIST,
 		'canvas_size': 40,
 		'n_part_caps': 24,
@@ -102,12 +106,13 @@ class Configs:
 		'set_transformer_n_output_dims': 256,
 		'part_cnn_strides': [2, 2, 1, 1],
 		'prep': 'none'
-	}
+	})
 
 	GTSRB = 'gtsrb'
 	GTSRB_DATASET_PATH = './datasets/GTSRB-for-SCAE_Attack/GTSRB'
 	GTSRB_CLASSES = [1, 2, 7, 10, 11, 13, 14, 17, 35, 38]
-	config_gtsrb = {
+	config_gtsrb = AttrDict({
+		'name': GTSRB,
 		'dataset': GTSRB,
 		'canvas_size': 40,
 		'n_part_caps': 40,
@@ -132,10 +137,11 @@ class Configs:
 		'set_transformer_n_output_dims': 256,
 		'part_cnn_strides': [1, 1, 2, 2],
 		'prep': 'none'
-	}
+	})
 
 	SVHN = 'svhn_cropped'
-	config_svhn = {
+	config_svhn = AttrDict({
+		'name': SVHN,
 		'dataset': SVHN,
 		'canvas_size': 32,
 		'n_part_caps': 24,
@@ -160,10 +166,11 @@ class Configs:
 		'set_transformer_n_output_dims': 128,
 		'part_cnn_strides': [1, 1, 2, 2],
 		'prep': 'sobel'
-	}
+	})
 
 	CIFAR10 = 'cifar10'
-	config_cifar10 = {
+	config_cifar10 = AttrDict({
+		'name': CIFAR10,
 		'dataset': CIFAR10,
 		'canvas_size': 32,
 		'n_part_caps': 32,
@@ -188,17 +195,47 @@ class Configs:
 		'set_transformer_n_output_dims': 128,
 		'part_cnn_strides': [1, 1, 2, 2],
 		'prep': 'sobel'
-	}
+	})
+
+	MNIST_CORRUPTED = 'mnist_corrupted'
+	configs_mnist_corrupted = AttrDict({corrupt_config.name: AttrDict({
+		'name': f'mnist_corrupted_{corrupt_config.name}',
+		'dataset': 'mnist_corrupted',
+		'builder_kwargs': {'config': corrupt_config},
+		'canvas_size': 40,
+		'n_part_caps': 24,
+		'n_obj_caps': 24,
+		'n_channels': 1,
+		'num_classes': 10,
+		'colorize_templates': True,
+		'use_alpha_channel': True,
+		'prior_within_example_sparsity_weight': 2.,
+		'prior_between_example_sparsity_weight': 0.35,
+		'posterior_within_example_sparsity_weight': 0.7,
+		'posterior_between_example_sparsity_weight': 0.2,
+		'template_size': 11,
+		'template_nonlin': 'sigmoid',
+		'color_nonlin': 'relu1',
+		'part_encoder_noise_scale': 4.0,
+		'obj_decoder_noise_type': 'uniform',
+		'obj_decoder_noise_scale': 4.0,
+		'set_transformer_n_layers': 3,
+		'set_transformer_n_heads': 1,
+		'set_transformer_n_dims': 16,
+		'set_transformer_n_output_dims': 256,
+		'part_cnn_strides': [2, 2, 1, 1],
+		'prep': 'none'
+	}) for corrupt_config in tfds.image.MNISTCorrupted.BUILDER_CONFIGS})
 
 
 if __name__ == '__main__':
 	block_warnings()
 
-	config = Configs.config_mnist
+	config = Configs.configs_mnist_corrupted['rotate']
 	batch_size = 100
 	max_train_steps = 300
 	learning_rate = 3e-5
-	snapshot = './checkpoints/{}/model.ckpt'.format(config['dataset'])
+	snapshot = './checkpoints/{}/model.ckpt'.format(config['name'])
 
 	model = build_from_config(
 		config=config,
@@ -214,12 +251,14 @@ if __name__ == '__main__':
 	                         file_path='./datasets', save_after_load=True,
 	                         batch_size=batch_size, shuffle=True, fill_batch=True,
 	                         normalize=True if config['dataset'] == Configs.GTSRB else False,
-	                         gtsrb_raw_file_path=Configs.GTSRB_DATASET_PATH, gtsrb_classes=Configs.GTSRB_CLASSES)
+	                         gtsrb_raw_file_path=Configs.GTSRB_DATASET_PATH, gtsrb_classes=Configs.GTSRB_CLASSES,
+	                         builder_kwargs=config.get('builder_kwargs', None))
 	testset = DatasetHelper(config['dataset'], 'test', shape=[config['canvas_size']] * 2,
 	                        file_path='./datasets', save_after_load=True,
 	                        batch_size=batch_size, fill_batch=True,
 	                        normalize=True if config['dataset'] == Configs.GTSRB else False,
-	                        gtsrb_raw_file_path=Configs.GTSRB_DATASET_PATH, gtsrb_classes=Configs.GTSRB_CLASSES)
+	                        gtsrb_raw_file_path=Configs.GTSRB_DATASET_PATH, gtsrb_classes=Configs.GTSRB_CLASSES,
+	                        builder_kwargs=config.get('builder_kwargs', None))
 
 	path = snapshot[:snapshot.rindex('/')]
 	if not os.path.exists(path):

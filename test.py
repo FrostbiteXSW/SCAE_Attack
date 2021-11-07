@@ -51,11 +51,13 @@ def test(
 	trainset = DatasetHelper(config['dataset'], 'train',
 	                         file_path=dataset_path, batch_size=batch_size, fill_batch=True,
 	                         normalize=True if config['dataset'] == Configs.GTSRB else False,
-	                         gtsrb_raw_file_path=Configs.GTSRB_DATASET_PATH, gtsrb_classes=Configs.GTSRB_CLASSES)
+	                         gtsrb_raw_file_path=Configs.GTSRB_DATASET_PATH, gtsrb_classes=Configs.GTSRB_CLASSES,
+	                         builder_kwargs=config.get('builder_kwargs', None))
 	testset = DatasetHelper(config['dataset'], 'test',
 	                        file_path=dataset_path, batch_size=batch_size, fill_batch=True,
 	                        normalize=True if config['dataset'] == Configs.GTSRB else False,
-	                        gtsrb_raw_file_path=Configs.GTSRB_DATASET_PATH, gtsrb_classes=Configs.GTSRB_CLASSES)
+	                        gtsrb_raw_file_path=Configs.GTSRB_DATASET_PATH, gtsrb_classes=Configs.GTSRB_CLASSES,
+	                        builder_kwargs=config.get('builder_kwargs', None))
 
 	# ------------------------------------- Supervised Classification ------------------------------------- #
 
@@ -115,9 +117,9 @@ def test(
 
 if __name__ == '__main__':
 	config = Configs.config_mnist
-	snapshot = './checkpoints/{}/model.ckpt'.format(config['dataset'])
-	snapshot_kmeans_pri = './checkpoints/{}/kmeans_pri/model.ckpt'.format(config['dataset'])
-	snapshot_kmeans_pos = './checkpoints/{}/kmeans_pos/model.ckpt'.format(config['dataset'])
+	snapshot = './checkpoints/{}/model.ckpt'.format(config['name'])
+	snapshot_kmeans_pri = './checkpoints/{}/kmeans_pri/model.ckpt'.format(config['name'])
+	snapshot_kmeans_pos = './checkpoints/{}/kmeans_pos/model.ckpt'.format(config['name'])
 	train_and_save_kmeans = not (os.path.exists(snapshot_kmeans_pri[:snapshot_kmeans_pri.rindex('/')])
 	                             and os.path.exists(snapshot_kmeans_pos[:snapshot_kmeans_pos.rindex('/')]))
 

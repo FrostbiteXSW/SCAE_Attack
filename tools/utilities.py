@@ -363,7 +363,8 @@ class DatasetHelper:
 	             batch_size=100, shuffle=False, fill_batch=False,
 	             file_path=None, save_after_load=False,
 	             gray_scale=False, normalize=False,
-	             gtsrb_raw_file_path=None, gtsrb_classes=None):
+	             gtsrb_raw_file_path=None, gtsrb_classes=None,
+	             builder_kwargs=None):
 		if not split:
 			raise Exception('Split should not be None.')
 
@@ -409,23 +410,15 @@ class DatasetHelper:
 				self._images = []
 				self._labels = []
 
-				graph = tf.Graph()
-				sess = tf.Session(graph=graph)
+				try:
+					gen = tfds.as_numpy(tfds.load(name=name, split=split, builder_kwargs=builder_kwargs).batch(batch_size))
 
-				with graph.as_default():
-					iter = tfds.load(name=name, split=split).batch(batch_size).make_one_shot_iterator()
-					next = iter.get_next()
-
-					try:
-						while True:
-							data = sess.run(next)
-							self._images.append(data['image'])
-							self._labels.append(data['label'])
-					except tf.python.framework_ops.errors.OutOfRangeError:
-						pass
-
-				# Free all resources. Automatically close session.
-				del sess
+					while True:
+						data = gen.__next__()
+						self._images.append(data['image'])
+						self._labels.append(data['label'])
+				except StopIteration:
+					pass
 
 				self._images = np.concatenate(self._images)
 				self._labels = np.concatenate(self._labels)

@@ -186,9 +186,9 @@ if __name__ == '__main__':
 	alpha = 0.5
 	use_mask = True
 
-	snapshot = './checkpoints/{}/model.ckpt'.format(config['dataset'])
+	snapshot = './checkpoints/{}/model.ckpt'.format(config['name'])
 	snapshot_kmeans = './checkpoints/{}/kmeans_{}/model.ckpt'.format(
-		config['dataset'], 'pri' if classifier[:3].upper() == 'PRI' else 'pos')
+		config['name'], 'pri' if classifier[:3].upper() == 'PRI' else 'pos')
 
 	# Create the attack model according to parameters above
 	model = build_from_config(
@@ -223,7 +223,8 @@ if __name__ == '__main__':
 	                                   or config['dataset'] == Configs.FASHION_MNIST else 'test',
 	                        file_path='./datasets', batch_size=batch_size, shuffle=True, fill_batch=True,
 	                        normalize=True if config['dataset'] == Configs.GTSRB else False,
-	                        gtsrb_raw_file_path=Configs.GTSRB_DATASET_PATH, gtsrb_classes=Configs.GTSRB_CLASSES)
+	                        gtsrb_raw_file_path=Configs.GTSRB_DATASET_PATH, gtsrb_classes=Configs.GTSRB_CLASSES,
+	                        builder_kwargs=config.get('builder_kwargs', None))
 
 	# Variables to save the attack result
 	succeed_count = 0
