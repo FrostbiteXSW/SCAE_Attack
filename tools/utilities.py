@@ -1,16 +1,17 @@
 import copy
 import csv
+import math
 import os
 import random
+import time
 from copy import deepcopy
+from datetime import datetime
 from warnings import simplefilter
 
-import math
 import matplotlib.pyplot as plt
 import numpy as np
 import tensorflow as tf
 import tensorflow_datasets as tfds
-import time
 from PIL import Image
 from absl import logging
 from monty.collections import AttrDict
@@ -639,14 +640,8 @@ class ResultBuilder(dict):
 
 	def save(self, result_path, plus_time=True):
 		if plus_time:
-			now = time.localtime()
-			result_path = result_path + '/{}_{}_{}_{}_{}/'.format(
-				now.tm_year,
-				now.tm_mon,
-				now.tm_mday,
-				now.tm_hour,
-				now.tm_min
-			)
+			now = datetime.now()
+			result_path =result_path + f'/{now:%Y_%m_%d_%H_%M}/'
 
 		file_path = result_path + '/result.txt'
 
