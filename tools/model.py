@@ -326,26 +326,24 @@ class ScaeBasement(_ModelCollector):
 		except tf.errors.InvalidArgumentError:
 			pass
 
-		raise NotImplementedError('Model is in training mode. Use run() instead.')
+		raise Exception('Model is in training mode. Use run() instead.')
 
 	def run(self, images, to_collect, labels=None):
 		try:
 			if labels is not None:
-				images, num_images, labels = self._valid_shape(images, labels)
 				return self._sess.run(to_collect, feed_dict={
 					self._input: images,
 					self._label: labels
-				})[:num_images]
+				})
 
-			images, num_images = self._valid_shape(images)
 			return self._sess.run(to_collect, feed_dict={
 				self._input: images
-			})[:num_images]
+			})
 
 		except tf.errors.InvalidArgumentError:
 			pass
 
-		raise NotImplementedError('Model is in training mode. Labels must be provided.')
+		raise Exception('Model is in training mode. Labels must be provided.')
 
 	def finalize(self):
 		self._sess.graph.finalize()
@@ -378,7 +376,7 @@ class ScaeBasement(_ModelCollector):
 
 	def train_step(self, images, labels):
 		if not self._is_training:
-			raise NotImplementedError('Model is not in training mode.')
+			raise Exception('Model is not in training mode.')
 
 		return self._sess.run(self._train_step, feed_dict={
 			self._input: images,
