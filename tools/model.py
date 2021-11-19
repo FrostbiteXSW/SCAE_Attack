@@ -264,23 +264,23 @@ class ScaeBasement(_ModelCollector):
 
 				self._loss = self._model._loss(data, self._res)
 
-				global_step = tf.train.get_or_create_global_step()
-				global_step.initializer.run(session=self._sess)
+				self._global_step = tf.train.get_or_create_global_step()
+				self._global_step.initializer.run(session=self._sess)
 
 				if use_lr_schedule:
-					learning_rate = tf.train.exponential_decay(
-						global_step=global_step,
-						learning_rate=learning_rate,
+					self._learning_rate = tf.train.exponential_decay(
+						global_step=self._global_step,
+						learning_rate=self._learning_rate,
 						decay_steps=1e4,
 						decay_rate=.96
 					)
 
 				eps = 1e-2 / float(input_size[0]) ** 2
-				optimizer = tf.train.RMSPropOptimizer(learning_rate, momentum=.9, epsilon=eps)
+				self._optimizer = tf.train.RMSPropOptimizer(self._learning_rate, momentum=.9, epsilon=eps)
 
-				self._train_step = optimizer.minimize(self._loss, global_step=global_step,
-				                                      var_list=tf.trainable_variables(scope=scope))
-				self._sess.run(tf.initialize_variables(var_list=optimizer.variables()))
+				self._train_step = self._optimizer.minimize(self._loss, global_step=self._global_step,
+				                                            var_list=tf.trainable_variables(scope=scope))
+				self._sess.run(tf.initialize_variables(var_list=self._optimizer.variables()))
 			else:
 				data = {'image': self._input}
 				self._res = self._model(data)
