@@ -591,7 +591,7 @@ class KMeans(_ModelCollector):
 		return preds_2_labels
 
 	def save_model(self, path):
-		print('Saving model to {}...'.format(path))
+		print('Saving model to {}...'.format(os.path.abspath(path)))
 		return self._saver.save(self._sess, save_path=path)
 
 
