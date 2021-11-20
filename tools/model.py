@@ -1,9 +1,10 @@
 import abc
+import os.path
+import time
 
 import numpy as np
 import sonnet as snt
 import tensorflow as tf
-import time
 from scipy.optimize import linear_sum_assignment
 from tensorflow.python.framework import ops
 from tensorflow.python.ops import array_ops
@@ -371,7 +372,7 @@ class ScaeBasement(_ModelCollector):
 		      .format(test_acc_prior / dataset.dataset_size, test_acc_posterior / dataset.dataset_size))
 
 	def save_model(self, path):
-		print('Saving model to {}...'.format(path))
+		print('Saving model to {}...'.format(os.path.abspath(path)))
 		return self._saver.save(self._sess, save_path=path)
 
 	def train_step(self, images, labels):
