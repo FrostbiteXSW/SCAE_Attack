@@ -279,7 +279,7 @@ if __name__ == '__main__':
 			# Print result
 			print('Failed for {}. Source label: {}.'.format(index, source_label))
 		else:
-			# Add info of the succeed sample to result variables
+			# Add info of the successful attack to result variables
 			succeed_count += 1
 			pert_amount = np.linalg.norm(pert_image - source_image)
 			pert_robustness = pert_amount / np.linalg.norm(source_image)
