@@ -5,12 +5,12 @@ from __future__ import print_function
 import joblib
 from sklearn.cluster import KMeans
 
-from attack_cw import Classifiers, OptimizerConfigs
+from attack_opt import Classifiers
 from train import *
 from utilities import *
 
 
-class SCAE_BIM_Attack(ModelCollector):
+class SCAE_PSC_Attack(ModelCollector):
 	def __init__(
 			self,
 			input_size,
@@ -99,11 +99,41 @@ class SCAE_BIM_Attack(ModelCollector):
 			self.score = object_capsule_set if classifier == Classifiers.PriK or classifier == Classifiers.PosK \
 				else self.res.prior_cls_pred if classifier == Classifiers.PriL else self.res.posterior_cls_pred
 
-			subset_position = tf.where(object_capsule_set > tf.reduce_mean(object_capsule_set))[:, 1]
 			grads = tf.stack([
 				tf.gradients(object_capsule_set[0, i], self.input)[0] for i in range(n_obj_caps)
 			])
-			self._grads_orig = tf.reduce_sum(tf.gather(grads, subset_position, axis=0), axis=0)[0]
+			subset_position = tf.where(object_capsule_set > tf.reduce_mean(object_capsule_set))[:, 1]
+			other_position = tf.where(object_capsule_set <= tf.reduce_mean(object_capsule_set))[:, 1]
+
+			# Code below is written based on the excellent work of DEEPSEC:
+			# https://github.com/kleincup/DEEPSEC/blob/2c67afac0ae966767b6712a51db85f04f4f5c565/Attacks/AttackMethods/JSMA.py
+
+			self._mask = tf.placeholder(tf.float32, input_size)
+			self._domain = tf.placeholder(tf.float32, input_size)
+			self._n_features = int(np.prod(input_size[1:]))
+
+			grads_orig = tf.reduce_sum(tf.gather(grads, subset_position, axis=0), axis=0) * self._mask
+			grads_other = tf.reduce_sum(tf.gather(grads, other_position, axis=0), axis=0) * self._mask
+
+			increase_coef = tf.multiply(tf.reshape(tf.cast(tf.equal(self._domain, 0), tf.float32), [-1]), 2)
+
+			grads_orig_cpy = tf.reshape(grads_orig, [-1])
+			grads_orig_cpy -= increase_coef * tf.reduce_max(tf.abs(grads_orig))
+			saliency_orig = tf.reshape(grads_orig_cpy, [-1, 1, self._n_features]) \
+			              + tf.reshape(grads_orig_cpy, [-1, self._n_features, 1])
+
+			grads_other_cpy = tf.reshape(grads_other, [-1])
+			grads_other_cpy += increase_coef * tf.reduce_max(tf.abs(grads_other))
+			saliency_other = tf.reshape(grads_other_cpy, [-1, 1, self._n_features]) \
+			               + tf.reshape(grads_other_cpy, [-1, self._n_features, 1])
+
+			zero_diagonal = tf.ones([self._n_features, self._n_features])
+			zero_diagonal -= tf.matrix_diag(tf.ones([self._n_features]))
+
+			mask1 = tf.cast(tf.greater(saliency_orig, 0.0), tf.float32)
+			mask2 = tf.cast(tf.less(saliency_other, 0.0), tf.float32)
+			mask3 = tf.multiply(tf.multiply(mask1, mask2), tf.reshape(zero_diagonal, mask1.shape))
+			self._saliency_map = tf.multiply(tf.multiply(saliency_orig, tf.abs(saliency_other)), mask3)
 
 			# Restore params of model from snapshot
 			saver = tf.train.Saver(var_list=tf.trainable_variables(scope=scope))
@@ -127,19 +157,39 @@ class SCAE_BIM_Attack(ModelCollector):
 			image: np.ndarray,
 			label: int,
 			mask: np.ndarray,
-			num_iter: int = 100,
+			num_iter: int = 200,
 			alpha: float = 0.5,
 			kmeans: KMeans = None,
 			p2l: np.ndarray = None
 	):
 		pert_image = image.copy()
+		domain = ((image > 0) * mask).astype(np.bool)
+
 		best_pert_image = None
 		best_result = None
-		best_pert_amount = np.inf
 
-		for _ in trange(num_iter, desc='Calculating', ncols=90):
-			grads_sign = np.sign(self.sess.run(self._grads_orig, feed_dict={self.input: pert_image}))
-			pert_image = (pert_image - grads_sign * alpha * mask).clip(0, 1)
+		tqdm_steps = trange(num_iter, desc='Calculating', ncols=90)
+		for _ in tqdm_steps:
+			saliency_map = self.sess.run(self._saliency_map,
+			                             feed_dict={self.input: pert_image,
+			                                        self._mask: mask,
+			                                        self._domain: domain})
+			max_idx = np.argmax(saliency_map)
+			p1 = np.unravel_index(max_idx // self._n_features, pert_image.shape)
+			p2 = np.unravel_index(max_idx % self._n_features, pert_image.shape)
+
+			# Saliency map all zero
+			if p1 == p2:
+				break
+
+			pert_image[p1] = np.clip(pert_image[p1] - alpha, 0, 1)
+			pert_image[p2] = np.clip(pert_image[p2] - alpha, 0, 1)
+
+			if pert_image[p1] == 0 or pert_image[p1] == 1:
+				domain[p1] = False
+			if pert_image[p2] == 0 or pert_image[p2] == 1:
+				domain[p2] = False
+
 			result = self.sess.run(self.score, feed_dict={self.input: pert_image})
 
 			if classifier == Classifiers.PriK or classifier == Classifiers.PosK:
@@ -147,12 +197,14 @@ class SCAE_BIM_Attack(ModelCollector):
 			else:
 				result = result[0]
 			if result != label:
-				pert_amount = np.square(pert_image - source_image).sum() ** (1 / 2)
-				if pert_amount < best_pert_amount:
-					best_pert_image = pert_image.copy()
-					best_result = result
-					best_pert_amount = pert_amount
+				best_pert_image = pert_image.copy()
+				best_result = result
+				break
 
+			if True not in domain:
+				break
+
+		tqdm_steps.close()
 		return best_pert_image, best_result
 
 
@@ -160,16 +212,17 @@ if __name__ == '__main__':
 	block_warnings()
 
 	# Attack configuration
-	config = config_gtsrb
+	config = config_mnist
 	num_samples = 5000
 	classifier = Classifiers.PriK
-	alpha = 0.05
+	alpha = 0.5
+	num_iter = 200
 	use_mask = True
 
 	snapshot = './checkpoints/{}/model.ckpt'.format(config['dataset'])
 
 	# Create the attack model according to parameters above
-	model = SCAE_BIM_Attack(
+	model = SCAE_PSC_Attack(
 		input_size=[1, config['canvas_size'], config['canvas_size'], config['n_channels']],
 		num_classes=config['num_classes'],
 		n_part_caps=config['n_part_caps'],
@@ -266,14 +319,22 @@ if __name__ == '__main__':
 				and p2l[kmeans.predict(result)[0]] != source_label \
 				or (classifier == Classifiers.PriL or classifier == Classifiers.PosL) \
 				and result[0] != source_label:
-			print('Skipping sample {}.\n'.format(index))
+			print("Skipping sample {}.\n".format(index))
 			continue
 		n -= 1
 
 		# Calculate mask
 		mask = imblur(source_image, times=1) if use_mask else np.ones_like(source_image)
 
-		pert_image, result = model.calc(source_image[None], source_label, mask[None], alpha=alpha, kmeans=kmeans, p2l=p2l)
+		pert_image, result = model.calc(
+			image=source_image[None],
+			label=source_label,
+			mask=mask[None],
+			num_iter=num_iter,
+			alpha=alpha,
+			kmeans=kmeans,
+			p2l=p2l
+		)
 
 		if pert_image is None:
 			# Print result
@@ -298,7 +359,7 @@ if __name__ == '__main__':
 
 	# Create result directory
 	now = time.localtime()
-	path = './results/bim/{}_{}_{}_{}_{}/'.format(
+	path = './results/psc/{}_{}_{}_{}_{}/'.format(
 		now.tm_year,
 		now.tm_mon,
 		now.tm_mday,

@@ -16,7 +16,7 @@ class Classifiers:
 	PosL = 'PosL'
 
 
-class SCAE_L2_Attack(ModelCollector):
+class SCAE_OPT_Attack(ModelCollector):
 	def __init__(
 			self,
 			input_size,
@@ -273,18 +273,18 @@ if __name__ == '__main__':
 	block_warnings()
 
 	# Attack configuration
-	config = config_fashion_mnist
+	config = config_mnist
 	optimizer_config = OptimizerConfigs.ADAM_fast
 	num_samples = 5000
 	outer_iteration = 9
-	classifier = Classifiers.PosK
+	classifier = Classifiers.PriK
 	use_mask = True
 
 	snapshot = './checkpoints/{}/model.ckpt'.format(config['dataset'])
 	inner_iteration, learning_rate, optimizer = optimizer_config
 
 	# Create the attack model according to parameters above
-	model = SCAE_L2_Attack(
+	model = SCAE_OPT_Attack(
 		input_size=[1, config['canvas_size'], config['canvas_size'], config['n_channels']],
 		num_classes=config['num_classes'],
 		n_part_caps=config['n_part_caps'],
@@ -432,7 +432,7 @@ if __name__ == '__main__':
 
 	# Create result directory
 	now = time.localtime()
-	path = './results/cw/{}_{}_{}_{}_{}/'.format(
+	path = './results/opt/{}_{}_{}_{}_{}/'.format(
 		now.tm_year,
 		now.tm_mon,
 		now.tm_mday,
