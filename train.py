@@ -79,6 +79,35 @@ class Configs:
 		'prep': 'none'
 	})
 
+	AFFNIST = 'affnist'
+	config_affnist = AttrDict({
+		'name': AFFNIST,
+		'dataset': AFFNIST,
+		'canvas_size': 40,
+		'n_part_caps': 24,
+		'n_obj_caps': 24,
+		'n_channels': 1,
+		'num_classes': 10,
+		'colorize_templates': True,
+		'use_alpha_channel': True,
+		'prior_within_example_sparsity_weight': 2.,
+		'prior_between_example_sparsity_weight': 0.35,
+		'posterior_within_example_sparsity_weight': 0.7,
+		'posterior_between_example_sparsity_weight': 0.2,
+		'template_size': 11,
+		'template_nonlin': 'sigmoid',
+		'color_nonlin': 'relu1',
+		'part_encoder_noise_scale': 4.0,
+		'obj_decoder_noise_type': 'uniform',
+		'obj_decoder_noise_scale': 4.0,
+		'set_transformer_n_layers': 3,
+		'set_transformer_n_heads': 1,
+		'set_transformer_n_dims': 16,
+		'set_transformer_n_output_dims': 256,
+		'part_cnn_strides': [2, 2, 1, 1],
+		'prep': 'none'
+	})
+
 	FASHION_MNIST = 'fashion_mnist'
 	config_fashion_mnist = AttrDict({
 		'name': FASHION_MNIST,
@@ -231,7 +260,7 @@ class Configs:
 if __name__ == '__main__':
 	block_warnings()
 
-	config = Configs.configs_mnist_corrupted['rotate']
+	config = Configs.config_mnist
 	batch_size = 100
 	max_train_steps = 300
 	learning_rate = 3e-5
