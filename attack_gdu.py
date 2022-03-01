@@ -7,7 +7,7 @@ from tools.utilities import block_warnings, imblur, DatasetHelper, ResultBuilder
 from train import Configs, build_from_config
 
 
-class AttackerBIM(Attacker):
+class AttackerGDU(Attacker):
 	def __init__(
 			self,
 			scae: ScaeBasement,
@@ -164,7 +164,7 @@ if __name__ == '__main__':
 			snapshot=snapshot_kmeans
 		)
 
-	attacker = AttackerBIM(
+	attacker = AttackerGDU(
 		scae=model,
 		classifier=classifier,
 		kmeans_classifier=kmeans if classifier[-1].upper() == 'K' else None,
@@ -252,6 +252,6 @@ if __name__ == '__main__':
 
 	# Print and save results
 	print(result)
-	path = result.save('./results/bim/')
+	path = result.save('./results/gdu/')
 	np.savez_compressed(path + 'source_images.npz', source_images=np.array(source_images, dtype=np.float32))
 	np.savez_compressed(path + 'pert_images.npz', pert_images=np.array(pert_images, dtype=np.float32))

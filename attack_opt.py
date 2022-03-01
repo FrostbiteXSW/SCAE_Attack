@@ -7,7 +7,7 @@ from tools.utilities import block_warnings, imblur, DatasetHelper, ResultBuilder
 from train import Configs, build_from_config
 
 
-class AttackerCW(Attacker):
+class AttackerOPT(Attacker):
 	class OptimizerConfigs:
 		RMSProp_fast = [9, 300, 1e-1, 'RMSProp']
 		RMSProp_normal = [9, 1000, 1e-1, 'RMSProp']
@@ -197,7 +197,7 @@ if __name__ == '__main__':
 
 	# Attack configuration
 	config = Configs.config_mnist
-	optimizer_config = AttackerCW.OptimizerConfigs.Adam_fast
+	optimizer_config = AttackerOPT.OptimizerConfigs.Adam_fast
 	num_samples = 1000
 	batch_size = 100
 	classifier = Attacker.Classifiers.PosK
@@ -224,7 +224,7 @@ if __name__ == '__main__':
 			snapshot=snapshot_kmeans
 		)
 
-	attacker = AttackerCW(
+	attacker = AttackerOPT(
 		scae=model,
 		optimizer_config=optimizer_config,
 		classifier=classifier,
@@ -310,6 +310,6 @@ if __name__ == '__main__':
 
 	# Print and save results
 	print(result)
-	path = result.save('./results/bim/')
+	path = result.save('./results/opt/')
 	np.savez_compressed(path + 'source_images.npz', source_images=np.array(source_images, dtype=np.float32))
 	np.savez_compressed(path + 'pert_images.npz', pert_images=np.array(pert_images, dtype=np.float32))
